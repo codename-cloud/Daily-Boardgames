@@ -1,4 +1,4 @@
-name: Build Android APK
+name: Build Daily Boardgames APK
 
 on:
   push:
@@ -87,12 +87,12 @@ jobs:
           ./gradlew assembleDebug -Pandroid.injected.testOnly=false --no-daemon --stacktrace
           # Create clean APK filename without the -debug tag
           mkdir -p app/build/outputs/apk/release-artifact
-          cp app/build/outputs/apk/debug/*.apk app/build/outputs/apk/release-artifact/minesweeper.apk
+          cp app/build/outputs/apk/debug/*.apk app/build/outputs/apk/release-artifact/daily-boardgames.apk
 
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: minesweeper-apk
+          name: daily-boardgames-apk
           path: app/build/outputs/apk/release-artifact/*.apk
           retention-days: 30
           if-no-files-found: error

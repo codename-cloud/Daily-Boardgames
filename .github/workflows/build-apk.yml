@@ -1,0 +1,99 @@
+name: Build Android APK
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build & Package APK
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          cache: 'gradle'
+
+      - name: Prepare Keystore and Environment
+        env:
+          KEYSTORE_BASE64: "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"
+        run: |
+          # 1. Ensure .env exists for secrets-gradle-plugin
+          if [ ! -f .env ]; then
+            if [ -f .env.example ]; then
+              cp .env.example .env
+            else
+              touch .env
+            fi
+          fi
+
+          # Helper to verify keystore integrity
+          is_keystore_valid() {
+            [ -f "$1" ] && [ -s "$1" ] && keytool -list -keystore "$1" -storepass android >/dev/null 2>&1
+          }
+
+          # 2. Decode the permanent debug keystore from file
+          if ! is_keystore_valid debug.keystore; then
+            rm -f debug.keystore debug.keystore.tmp
+            if [ -f debug.keystore.base64 ] && [ -s debug.keystore.base64 ]; then
+              base64 -d debug.keystore.base64 > debug.keystore.tmp 2>/dev/null || base64 -di debug.keystore.base64 > debug.keystore.tmp 2>/dev/null || true
+              if is_keystore_valid debug.keystore.tmp; then
+                mv debug.keystore.tmp debug.keystore
+              fi
+            fi
+          fi
+
+          # 3. If still missing or invalid, decode directly from embedded base64 string
+          if ! is_keystore_valid debug.keystore; then
+            rm -f debug.keystore debug.keystore.tmp
+            echo "$KEYSTORE_BASE64" | base64 -d > debug.keystore.tmp 2>/dev/null || echo "$KEYSTORE_BASE64" | base64 -di > debug.keystore.tmp 2>/dev/null || true
+            if is_keystore_valid debug.keystore.tmp; then
+              mv debug.keystore.tmp debug.keystore
+            fi
+          fi
+
+          # 4. Fallback generation if decoding was not available or invalid
+          if ! is_keystore_valid debug.keystore; then
+            rm -f debug.keystore debug.keystore.tmp
+            echo "Generating fallback debug keystore..."
+            keytool -genkey -v -keystore debug.keystore -alias androiddebugkey -keyalg RSA -keysize 2048 -validity 10000 -storepass android -keypass android -dname "CN=Android Debug,O=Android,C=US"
+          fi
+
+          echo "Keystore ready: $(ls -l debug.keystore)"
+
+      - name: Grant Execute Permission for Gradle Wrapper
+        run: |
+          sed -i 's/\r$//' gradlew
+          chmod +x gradlew
+
+      - name: Build Installable APK
+        run: |
+          ./gradlew assembleDebug -Pandroid.injected.testOnly=false --no-daemon --stacktrace
+          # Create clean APK filename without the -debug tag
+          mkdir -p app/build/outputs/apk/release-artifact
+          cp app/build/outputs/apk/debug/*.apk app/build/outputs/apk/release-artifact/minesweeper.apk
+
+      - name: Upload APK Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: minesweeper-apk
+          path: app/build/outputs/apk/release-artifact/*.apk
+          retention-days: 30
+          if-no-files-found: error
+          overwrite: true

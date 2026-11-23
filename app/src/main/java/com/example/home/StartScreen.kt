@@ -29,11 +29,8 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.VolumeMute
-import androidx.compose.material.icons.filled.VolumeUp
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Scaffold
@@ -149,48 +146,17 @@ fun StartScreen(
                         )
                     }
 
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(2.dp)
+                    IconButton(
+                        onClick = { showSettingsDialog = true },
+                        modifier = Modifier
+                            .size(40.dp)
+                            .testTag("home_settings_button")
                     ) {
-                        IconButton(
-                            onClick = { AppSettingsStore.toggleSound(context) },
-                            modifier = Modifier
-                                .size(40.dp)
-                                .testTag("home_sound_toggle_button")
-                        ) {
-                            Icon(
-                                imageVector = if (settings.isSoundEnabled) Icons.Default.VolumeUp else Icons.Default.VolumeMute,
-                                contentDescription = if (settings.isSoundEnabled) "Mute sound" else "Enable sound",
-                                tint = colors.primaryText
-                            )
-                        }
-
-                        IconButton(
-                            onClick = { AppSettingsStore.toggleOledMode(context) },
-                            modifier = Modifier
-                                .size(40.dp)
-                                .testTag("home_oled_toggle_button")
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.DarkMode,
-                                contentDescription = if (settings.isOledMode) "Disable OLED pure black mode" else "Enable OLED pure black mode",
-                                tint = if (settings.isOledMode) Color(0xFF60A5FA) else colors.primaryText
-                            )
-                        }
-
-                        IconButton(
-                            onClick = { showSettingsDialog = true },
-                            modifier = Modifier
-                                .size(40.dp)
-                                .testTag("home_settings_button")
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Settings,
-                                contentDescription = "Theme & Haptic Settings",
-                                tint = colors.primaryText
-                            )
-                        }
+                        Icon(
+                            imageVector = Icons.Default.Settings,
+                            contentDescription = "Game Settings",
+                            tint = colors.primaryText
+                        )
                     }
                 }
             }
@@ -303,11 +269,14 @@ fun StartScreen(
             isFlagHapticsEnabled = settings.isFlagHapticsEnabled,
             hapticStrength = settings.hapticStrength,
             isOledMode = settings.isOledMode,
+            isSoundEnabled = settings.isSoundEnabled,
+            onToggleSound = { AppSettingsStore.setSoundEnabled(context, it) },
             onToggleMasterHaptics = { AppSettingsStore.setHapticsEnabled(context, it) },
             onToggleFlagHaptics = { AppSettingsStore.setFlagHapticsEnabled(context, it) },
             onSelectHapticStrength = { AppSettingsStore.setHapticStrength(context, it) },
             onTestFlagHaptic = { hapticManager.performFlagHaptic(settings.hapticStrength) },
             onToggleOledMode = { AppSettingsStore.setOledMode(context, it) },
+            showFlagHapticsSection = false,
             onDismiss = { showSettingsDialog = false }
         )
     }

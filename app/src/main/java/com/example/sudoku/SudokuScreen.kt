@@ -41,7 +41,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
@@ -56,6 +56,7 @@ import com.example.common.ArcadePillButton
 import com.example.common.ArcadeVictoryDialog
 import com.example.common.rememberArcadeThemeColors
 import com.example.minesweeper.ui.components.DailyStreakDialog
+import com.example.minesweeper.ui.components.HapticSettingsDialog
 import com.example.ui.theme.JetBrainsMonoFontFamily
 
 @Composable
@@ -92,34 +93,28 @@ fun SudokuScreen(
                 leftCounterTag = "sudoku_remaining_counter",
                 timerSeconds = uiState.timerSeconds,
                 status = uiState.status,
-                isSoundEnabled = uiState.isSoundEnabled,
                 isOledMode = uiState.isOledMode,
                 dailyStreak = uiState.dailyStreak,
                 onBackClick = onBackToHome,
                 onResetClick = { viewModel.startNewGame() },
-                onToggleSound = { viewModel.toggleSound() },
-                onToggleOledMode = { viewModel.toggleOledMode() },
+                onOpenSettings = { viewModel.showSettingsDialog(true) },
                 onOpenDailyStreak = { viewModel.showDailyStreakDialog(true) },
                 onOpenStats = { viewModel.showStatsDialog(true) }
             ) {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(bottom = 2.dp),
+                        .padding(horizontal = 4.dp, vertical = 2.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                        SudokuDifficulty.entries.forEach { diff ->
-                            ArcadePillButton(
-                                label = diff.shortLabel,
-                                selected = uiState.difficulty == diff,
-                                isOledMode = uiState.isOledMode,
-                                onClick = { viewModel.startNewGame(diff) },
-                                testTag = "sudoku_diff_${diff.name.lowercase()}"
-                            )
-                        }
-                    }
+                    Text(
+                        text = "Difficulty: ${uiState.difficulty.label}",
+                        color = colors.secondaryText,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        modifier = Modifier.testTag("sudoku_difficulty_label")
+                    )
 
                     Text(
                         text = "Mistakes: ${uiState.mistakes}",
@@ -289,6 +284,47 @@ fun SudokuScreen(
         )
     }
 
+    if (uiState.showSettingsDialog) {
+        HapticSettingsDialog(
+            isHapticsEnabled = uiState.isHapticsEnabled,
+            isOledMode = uiState.isOledMode,
+            isSoundEnabled = uiState.isSoundEnabled,
+            onToggleSound = { viewModel.setSoundEnabled(it) },
+            onToggleMasterHaptics = { viewModel.setHapticsEnabled(it) },
+            onToggleOledMode = { viewModel.setOledMode(it) },
+            showFlagHapticsSection = false,
+            onDismiss = { viewModel.showSettingsDialog(false) },
+            gameOptionsContent = {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Text(
+                        text = "Difficulty",
+                        fontWeight = FontWeight.SemiBold,
+                        fontSize = 15.sp,
+                        color = colors.primaryText
+                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        SudokuDifficulty.entries.forEach { diff ->
+                            ArcadePillButton(
+                                label = diff.shortLabel,
+                                selected = uiState.difficulty == diff,
+                                isOledMode = uiState.isOledMode,
+                                onClick = { viewModel.startNewGame(diff) },
+                                modifier = Modifier.weight(1f),
+                                testTag = "sudoku_diff_${diff.name.lowercase()}"
+                            )
+                        }
+                    }
+                }
+            }
+        )
+    }
+
     if (uiState.showStatsDialog) {
         SudokuStatsDialog(
             stats = uiState.stats,
@@ -309,15 +345,16 @@ private fun SudokuBoardView(
 ) {
     val selectedValue = selectedCell?.let { (r, c) -> board[r][c].value } ?: 0
     val thinLineColor = when {
-        isOledMode -> Color(0xFF262626)
-        isDark -> Color(0xFF334155)
+        isOledMode -> Color(0xFF2D3748)
+        isDark -> Color(0xFF475569)
         else -> Color(0xFF94A3B8)
     }
     val thickLineColor = when {
-        isOledMode -> Color(0xFF60A5FA).copy(alpha = 0.65f)
-        isDark -> Color(0xFF64748B)
+        isOledMode -> Color(0xFF64748B)
+        isDark -> Color(0xFF94A3B8)
         else -> Color(0xFF334155)
     }
+    val boardShape = RoundedCornerShape(10.dp)
 
     BoxWithConstraints(
         modifier = Modifier
@@ -330,19 +367,21 @@ private fun SudokuBoardView(
         Box(
             modifier = Modifier
                 .size(boardSide)
+                .clip(boardShape)
                 .background(if (isOledMode) Color.Black else if (isDark) Color(0xFF0F172A) else Color(0xFFE2E8F0))
-                .border(2.dp, thickLineColor)
-                .drawBehind {
+                .drawWithContent {
+                    drawContent()
                     val cellPx = size.width / 9f
                     for (i in 1 until 9) {
                         val pos = cellPx * i
                         val isThick = i % 3 == 0
-                        val stroke = if (isThick) 2.dp.toPx() else 0.7.dp.toPx()
+                        val stroke = if (isThick) 2.dp.toPx() else 0.8.dp.toPx()
                         val color = if (isThick) thickLineColor else thinLineColor
                         drawLine(color = color, start = Offset(pos, 0f), end = Offset(pos, size.height), strokeWidth = stroke)
                         drawLine(color = color, start = Offset(0f, pos), end = Offset(size.width, pos), strokeWidth = stroke)
                     }
                 }
+                .border(2.dp, thickLineColor, boardShape)
         ) {
             Column(modifier = Modifier.fillMaxSize()) {
                 for (r in 0 until 9) {
@@ -360,14 +399,23 @@ private fun SudokuBoardView(
                                     (selectedCell.first / 3 == r / 3 && selectedCell.second / 3 == c / 3)
                                 )
                             val isSameDigit = selectedValue != 0 && cell.value == selectedValue && !isSelected
+                            val isAltBox = ((r / 3) + (c / 3)) % 2 == 1
 
                             val cellBg = when {
                                 isSelected -> if (isOledMode) Color(0xFF1D4ED8).copy(alpha = 0.55f) else if (isDark) Color(0xFF1D4ED8).copy(alpha = 0.45f) else Color(0xFF93C5FD)
                                 cell.isError -> if (isOledMode) Color(0xFF7F1D1D).copy(alpha = 0.7f) else Color(0xFFEF4444).copy(alpha = 0.28f)
                                 isSameDigit -> if (isOledMode) Color(0xFF1E3A8A).copy(alpha = 0.55f) else if (isDark) Color(0xFF1E3A8A).copy(alpha = 0.5f) else Color(0xFFBFDBFE)
                                 isPeer -> if (isOledMode) Color(0xFF0F172A) else if (isDark) Color(0xFF283548) else Color(0xFFDFE7F1)
-                                cell.isGiven -> if (isOledMode) Color(0xFF0A0A0A) else if (isDark) Color(0xFF334155) else Color(0xFFCBD5E1)
-                                else -> if (isOledMode) Color.Black else if (isDark) Color(0xFF1E293B) else Color(0xFFF8FAFC)
+                                isAltBox -> when {
+                                    isOledMode -> Color(0xFF0D0F14)
+                                    isDark -> Color(0xFF253042)
+                                    else -> Color(0xFFE9EFF6)
+                                }
+                                else -> when {
+                                    isOledMode -> Color.Black
+                                    isDark -> Color(0xFF1E293B)
+                                    else -> Color(0xFFF8FAFC)
+                                }
                             }
 
                             val textColor = when {

@@ -48,6 +48,7 @@ import com.example.common.ArcadePillButton
 import com.example.common.ArcadeVictoryDialog
 import com.example.common.rememberArcadeThemeColors
 import com.example.minesweeper.ui.components.DailyStreakDialog
+import com.example.minesweeper.ui.components.HapticSettingsDialog
 
 @Composable
 fun SolitaireScreen(
@@ -83,13 +84,11 @@ fun SolitaireScreen(
                 leftCounterTag = "solitaire_moves_counter",
                 timerSeconds = uiState.timerSeconds,
                 status = uiState.status,
-                isSoundEnabled = uiState.isSoundEnabled,
                 isOledMode = uiState.isOledMode,
                 dailyStreak = uiState.dailyStreak,
                 onBackClick = onBackToHome,
                 onResetClick = { viewModel.startNewGame() },
-                onToggleSound = { viewModel.toggleSound() },
-                onToggleOledMode = { viewModel.toggleOledMode() },
+                onOpenSettings = { viewModel.showSettingsDialog(true) },
                 onOpenDailyStreak = { viewModel.showDailyStreakDialog(true) },
                 onOpenStats = { viewModel.showStatsDialog(true) }
             ) {
@@ -100,22 +99,15 @@ fun SolitaireScreen(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                        ArcadePillButton(
-                            label = "Draw 1",
-                            selected = game.drawMode == SolitaireDrawMode.DRAW_1,
-                            isOledMode = uiState.isOledMode,
-                            onClick = { viewModel.setDrawMode(SolitaireDrawMode.DRAW_1) },
-                            testTag = "solitaire_draw1_pill"
-                        )
-                        ArcadePillButton(
-                            label = "Draw 3",
-                            selected = game.drawMode == SolitaireDrawMode.DRAW_3,
-                            isOledMode = uiState.isOledMode,
-                            onClick = { viewModel.setDrawMode(SolitaireDrawMode.DRAW_3) },
-                            testTag = "solitaire_draw3_pill"
-                        )
-                    }
+                    Text(
+                        text = game.drawMode.label,
+                        color = colors.secondaryText,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        modifier = Modifier
+                            .padding(start = 4.dp)
+                            .testTag("solitaire_draw_mode_label")
+                    )
 
                     Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                         if (uiState.canAutoComplete && !uiState.isAutoCompleting) {
@@ -378,6 +370,53 @@ fun SolitaireScreen(
                 onBackToHome()
             },
             onDismiss = { viewModel.dismissVictoryDialog() }
+        )
+    }
+
+    if (uiState.showSettingsDialog) {
+        HapticSettingsDialog(
+            isHapticsEnabled = uiState.isHapticsEnabled,
+            isOledMode = uiState.isOledMode,
+            isSoundEnabled = uiState.isSoundEnabled,
+            onToggleSound = { viewModel.setSoundEnabled(it) },
+            onToggleMasterHaptics = { viewModel.setHapticsEnabled(it) },
+            onToggleOledMode = { viewModel.setOledMode(it) },
+            showFlagHapticsSection = false,
+            onDismiss = { viewModel.showSettingsDialog(false) },
+            gameOptionsContent = {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Text(
+                        text = "Draw Mode",
+                        fontWeight = FontWeight.SemiBold,
+                        fontSize = 15.sp,
+                        color = colors.primaryText
+                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        ArcadePillButton(
+                            label = "Draw 1",
+                            selected = game.drawMode == SolitaireDrawMode.DRAW_1,
+                            isOledMode = uiState.isOledMode,
+                            onClick = { viewModel.setDrawMode(SolitaireDrawMode.DRAW_1) },
+                            modifier = Modifier.weight(1f),
+                            testTag = "solitaire_draw1_pill"
+                        )
+                        ArcadePillButton(
+                            label = "Draw 3",
+                            selected = game.drawMode == SolitaireDrawMode.DRAW_3,
+                            isOledMode = uiState.isOledMode,
+                            onClick = { viewModel.setDrawMode(SolitaireDrawMode.DRAW_3) },
+                            modifier = Modifier.weight(1f),
+                            testTag = "solitaire_draw3_pill"
+                        )
+                    }
+                }
+            }
         )
     }
 

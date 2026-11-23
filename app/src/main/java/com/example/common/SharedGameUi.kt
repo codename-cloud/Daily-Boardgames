@@ -17,9 +17,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.BarChart
-import androidx.compose.material.icons.filled.DarkMode
-import androidx.compose.material.icons.filled.VolumeMute
-import androidx.compose.material.icons.filled.VolumeUp
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
@@ -110,13 +108,11 @@ fun ArcadeGameHUD(
     leftCounterTag: String,
     timerSeconds: Int,
     status: GameStatus,
-    isSoundEnabled: Boolean,
     isOledMode: Boolean,
     dailyStreak: DailyStreak,
     onBackClick: () -> Unit,
     onResetClick: () -> Unit,
-    onToggleSound: () -> Unit,
-    onToggleOledMode: () -> Unit,
+    onOpenSettings: () -> Unit,
     onOpenDailyStreak: () -> Unit,
     onOpenStats: () -> Unit,
     modifier: Modifier = Modifier,
@@ -175,28 +171,15 @@ fun ArcadeGameHUD(
                 )
 
                 IconButton(
-                    onClick = onToggleSound,
+                    onClick = onOpenSettings,
                     modifier = Modifier
                         .size(40.dp)
-                        .testTag("sound_toggle_button")
+                        .testTag("game_settings_button")
                 ) {
                     Icon(
-                        imageVector = if (isSoundEnabled) Icons.Default.VolumeUp else Icons.Default.VolumeMute,
-                        contentDescription = if (isSoundEnabled) "Mute sound" else "Enable sound",
+                        imageVector = Icons.Default.Settings,
+                        contentDescription = "Game Settings",
                         tint = colors.primaryText
-                    )
-                }
-
-                IconButton(
-                    onClick = onToggleOledMode,
-                    modifier = Modifier
-                        .size(40.dp)
-                        .testTag("oled_toggle_button")
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.DarkMode,
-                        contentDescription = if (isOledMode) "Disable OLED pure black mode" else "Enable OLED pure black mode",
-                        tint = if (isOledMode) Color(0xFF60A5FA) else colors.primaryText
                     )
                 }
 

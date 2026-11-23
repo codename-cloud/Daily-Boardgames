@@ -18,11 +18,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.BarChart
-import androidx.compose.material.icons.filled.DarkMode
-import androidx.compose.material.icons.filled.ScreenRotation
 import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.VolumeMute
-import androidx.compose.material.icons.filled.VolumeUp
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -116,46 +112,24 @@ fun GameHUD(
                 )
 
                 IconButton(
-                    onClick = onToggleSound,
-                    modifier = Modifier.size(32.dp).testTag("sound_toggle_button")
-                ) {
-                    Icon(
-                        imageVector = if (isSoundEnabled) Icons.Default.VolumeUp else Icons.Default.VolumeMute,
-                        contentDescription = if (isSoundEnabled) "Mute sound" else "Enable sound",
-                        modifier = Modifier.size(18.dp),
-                        tint = if (isDark || isOledMode) Color.White else Color(0xFF1E293B)
-                    )
-                }
-                IconButton(
-                    onClick = onToggleOledMode,
-                    modifier = Modifier.size(32.dp).testTag("oled_toggle_button")
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.DarkMode,
-                        contentDescription = if (isOledMode) "Disable OLED pure black mode" else "Enable OLED pure black mode",
-                        modifier = Modifier.size(18.dp),
-                        tint = if (isOledMode) Color(0xFF60A5FA) else (if (isDark) Color.White else Color(0xFF1E293B))
-                    )
-                }
-                IconButton(
                     onClick = onOpenHapticSettings,
-                    modifier = Modifier.size(32.dp).testTag("haptic_settings_button")
+                    modifier = Modifier.size(34.dp).testTag("haptic_settings_button")
                 ) {
                     Icon(
                         imageVector = Icons.Default.Settings,
-                        contentDescription = "Haptic feedback settings",
-                        modifier = Modifier.size(18.dp),
+                        contentDescription = "Game Settings",
+                        modifier = Modifier.size(20.dp),
                         tint = if (isDark || isOledMode) Color.White else Color(0xFF1E293B)
                     )
                 }
                 IconButton(
                     onClick = onOpenStats,
-                    modifier = Modifier.size(32.dp).testTag("stats_button")
+                    modifier = Modifier.size(34.dp).testTag("stats_button")
                 ) {
                     Icon(
                         imageVector = Icons.Default.BarChart,
                         contentDescription = "Game statistics",
-                        modifier = Modifier.size(18.dp),
+                        modifier = Modifier.size(20.dp),
                         tint = if (isDark || isOledMode) Color.White else Color(0xFF1E293B)
                     )
                 }
@@ -180,54 +154,13 @@ fun GameHUD(
                 )
             }
 
-            // Right: Difficulty pills & Rotate
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(4.dp),
-                modifier = Modifier.testTag("difficulty_row")
-            ) {
-                DifficultyPill(
-                    title = "Beg",
-                    selected = currentDifficulty.type == DifficultyType.BEGINNER,
-                    onClick = { onSelectDifficulty(Difficulty.BEGINNER) },
-                    testTag = "diff_beginner"
-                )
-                DifficultyPill(
-                    title = "Int",
-                    selected = currentDifficulty.type == DifficultyType.INTERMEDIATE,
-                    onClick = { onSelectDifficulty(Difficulty.INTERMEDIATE) },
-                    testTag = "diff_intermediate"
-                )
-                DifficultyPill(
-                    title = "Exp",
-                    selected = currentDifficulty.type == DifficultyType.EXPERT,
-                    onClick = { onSelectDifficulty(Difficulty.EXPERT_PORTRAIT) },
-                    testTag = "diff_expert"
-                )
-
-                if (currentDifficulty.rows != currentDifficulty.cols) {
-                    Box(
-                        modifier = Modifier
-                            .padding(start = 2.dp)
-                            .size(28.dp)
-                            .clip(CircleShape)
-                            .background(if (isOledMode) Color(0xFF1E1E1E) else if (isDark) Color(0xFF334155) else Color(0xFFE2E8F0))
-                            .clickable(
-                                role = Role.Button,
-                                onClickLabel = "Rotate Board Orientation",
-                                onClick = onToggleExpertOrientation
-                            ),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.ScreenRotation,
-                            contentDescription = "Rotate Board Orientation",
-                            modifier = Modifier.size(16.dp),
-                            tint = if (isDark || isOledMode) Color(0xFF93C5FD) else Color(0xFF2563EB)
-                        )
-                    }
-                }
-            }
+            // Right: Current difficulty indicator
+            Text(
+                text = currentDifficulty.name,
+                color = if (isDark || isOledMode) Color(0xFF94A3B8) else Color(0xFF475569),
+                fontSize = 12.sp,
+                fontWeight = FontWeight.SemiBold
+            )
         }
     } else {
         // Standard Portrait Column Layout
@@ -306,29 +239,15 @@ fun GameHUD(
                 // Settings & Stats actions
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(2.dp)
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
-                    IconButton(
-                        onClick = onToggleSound,
-                        modifier = Modifier.testTag("sound_toggle_button")
-                    ) {
-                        Icon(
-                            imageVector = if (isSoundEnabled) Icons.Default.VolumeUp else Icons.Default.VolumeMute,
-                            contentDescription = if (isSoundEnabled) "Mute sound" else "Enable sound",
-                            tint = if (isDark || isOledMode) Color.White else Color(0xFF1E293B)
-                        )
-                    }
-
-                    IconButton(
-                        onClick = onToggleOledMode,
-                        modifier = Modifier.testTag("oled_toggle_button")
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.DarkMode,
-                            contentDescription = if (isOledMode) "Disable OLED pure black mode" else "Enable OLED pure black mode",
-                            tint = if (isOledMode) Color(0xFF60A5FA) else (if (isDark) Color.White else Color(0xFF1E293B))
-                        )
-                    }
+                    Text(
+                        text = currentDifficulty.name,
+                        color = if (isDark || isOledMode) Color(0xFF94A3B8) else Color(0xFF475569),
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        modifier = Modifier.padding(end = 4.dp)
+                    )
 
                     IconButton(
                         onClick = onOpenHapticSettings,
@@ -336,7 +255,7 @@ fun GameHUD(
                     ) {
                         Icon(
                             imageVector = Icons.Default.Settings,
-                            contentDescription = "Haptic feedback settings",
+                            contentDescription = "Game Settings",
                             tint = if (isDark || isOledMode) Color.White else Color(0xFF1E293B)
                         )
                     }
@@ -349,66 +268,6 @@ fun GameHUD(
                             imageVector = Icons.Default.BarChart,
                             contentDescription = "Game statistics",
                             tint = if (isDark || isOledMode) Color.White else Color(0xFF1E293B)
-                        )
-                    }
-                }
-            }
-
-            // Difficulty row
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 2.dp, bottom = 2.dp)
-                    .testTag("difficulty_row"),
-                horizontalArrangement = Arrangement.Center,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                DifficultyPill(
-                    title = "Beginner",
-                    selected = currentDifficulty.type == DifficultyType.BEGINNER,
-                    onClick = { onSelectDifficulty(Difficulty.BEGINNER) },
-                    testTag = "diff_beginner"
-                )
-
-                DifficultyPill(
-                    title = "Intermediate",
-                    selected = currentDifficulty.type == DifficultyType.INTERMEDIATE,
-                    onClick = { onSelectDifficulty(Difficulty.INTERMEDIATE) },
-                    testTag = "diff_intermediate"
-                )
-
-                DifficultyPill(
-                    title = "Expert",
-                    selected = currentDifficulty.type == DifficultyType.EXPERT,
-                    onClick = {
-                        if (currentDifficulty.type == DifficultyType.EXPERT) {
-                            onSelectDifficulty(currentDifficulty)
-                        } else {
-                            onSelectDifficulty(Difficulty.EXPERT_PORTRAIT)
-                        }
-                    },
-                    testTag = "diff_expert"
-                )
-
-                if (currentDifficulty.rows != currentDifficulty.cols) {
-                    Box(
-                        modifier = Modifier
-                            .padding(start = 4.dp)
-                            .size(30.dp)
-                            .clip(CircleShape)
-                            .background(if (isOledMode) Color(0xFF1E1E1E) else if (isDark) Color(0xFF334155) else Color(0xFFE2E8F0))
-                            .clickable(
-                                role = Role.Button,
-                                onClickLabel = "Rotate Board Orientation",
-                                onClick = onToggleExpertOrientation
-                            ),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.ScreenRotation,
-                            contentDescription = "Rotate Board Orientation",
-                            modifier = Modifier.size(18.dp),
-                            tint = if (isDark || isOledMode) Color(0xFF93C5FD) else Color(0xFF2563EB)
                         )
                     }
                 }

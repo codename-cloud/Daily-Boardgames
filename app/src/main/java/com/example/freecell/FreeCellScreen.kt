@@ -24,6 +24,7 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -47,6 +48,7 @@ import com.example.common.ArcadePillButton
 import com.example.common.ArcadeVictoryDialog
 import com.example.common.rememberArcadeThemeColors
 import com.example.minesweeper.ui.components.DailyStreakDialog
+import com.example.minesweeper.ui.components.HapticSettingsDialog
 
 @Composable
 fun FreeCellScreen(
@@ -82,13 +84,11 @@ fun FreeCellScreen(
                 leftCounterTag = "freecell_remaining_counter",
                 timerSeconds = uiState.timerSeconds,
                 status = uiState.status,
-                isSoundEnabled = uiState.isSoundEnabled,
                 isOledMode = uiState.isOledMode,
                 dailyStreak = uiState.dailyStreak,
                 onBackClick = onBackToHome,
                 onResetClick = { viewModel.startNewGame() },
-                onToggleSound = { viewModel.toggleSound() },
-                onToggleOledMode = { viewModel.toggleOledMode() },
+                onOpenSettings = { viewModel.showSettingsDialog(true) },
                 onOpenDailyStreak = { viewModel.showDailyStreakDialog(true) },
                 onOpenStats = { viewModel.showStatsDialog(true) }
             ) {
@@ -99,12 +99,14 @@ fun FreeCellScreen(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    ArcadePillButton(
-                        label = if (uiState.isAutoFoundationEnabled) "Auto: ON" else "Auto: OFF",
-                        selected = uiState.isAutoFoundationEnabled,
-                        isOledMode = uiState.isOledMode,
-                        onClick = { viewModel.toggleAutoFoundation() },
-                        testTag = "freecell_auto_pill"
+                    Text(
+                        text = if (uiState.isAutoFoundationEnabled) "Auto-Move: ON" else "Auto-Move: OFF",
+                        color = colors.secondaryText,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        modifier = Modifier
+                            .padding(start = 4.dp)
+                            .testTag("freecell_auto_status")
                     )
 
                     Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -314,6 +316,47 @@ fun FreeCellScreen(
                 onBackToHome()
             },
             onDismiss = { viewModel.dismissVictoryDialog() }
+        )
+    }
+
+    if (uiState.showSettingsDialog) {
+        HapticSettingsDialog(
+            isHapticsEnabled = uiState.isHapticsEnabled,
+            isOledMode = uiState.isOledMode,
+            isSoundEnabled = uiState.isSoundEnabled,
+            onToggleSound = { viewModel.setSoundEnabled(it) },
+            onToggleMasterHaptics = { viewModel.setHapticsEnabled(it) },
+            onToggleOledMode = { viewModel.setOledMode(it) },
+            showFlagHapticsSection = false,
+            onDismiss = { viewModel.showSettingsDialog(false) },
+            gameOptionsContent = {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 4.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f).padding(end = 8.dp)) {
+                        Text(
+                            text = "Auto-Move to Foundation",
+                            fontWeight = FontWeight.SemiBold,
+                            fontSize = 15.sp,
+                            color = colors.primaryText
+                        )
+                        Text(
+                            text = "Automatically move safe cards up to foundations",
+                            fontSize = 12.sp,
+                            color = colors.secondaryText
+                        )
+                    }
+                    Switch(
+                        checked = uiState.isAutoFoundationEnabled,
+                        onCheckedChange = { viewModel.setAutoFoundationEnabled(it) },
+                        modifier = Modifier.testTag("freecell_auto_switch")
+                    )
+                }
+            }
         )
     }
 

@@ -4,16 +4,22 @@ import android.content.res.Configuration
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -24,8 +30,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.example.common.ArcadePillButton
+import com.example.minesweeper.model.Difficulty
+import com.example.minesweeper.model.DifficultyType
 import com.example.minesweeper.model.GameStatus
 import com.example.minesweeper.ui.components.DailyStreakDialog
 import com.example.minesweeper.ui.components.GameHUD
@@ -164,12 +176,68 @@ fun MinesweeperScreen(
             isFlagHapticsEnabled = uiState.isFlagHapticsEnabled,
             hapticStrength = uiState.hapticStrength,
             isOledMode = uiState.isOledMode,
+            isSoundEnabled = uiState.isSoundEnabled,
+            onToggleSound = { viewModel.setSoundEnabled(it) },
             onToggleMasterHaptics = { viewModel.setHapticsEnabled(it) },
             onToggleFlagHaptics = { viewModel.setFlagHapticsEnabled(it) },
             onSelectHapticStrength = { viewModel.setHapticStrength(it) },
             onTestFlagHaptic = { viewModel.testFlagHaptic() },
             onToggleOledMode = { viewModel.setOledMode(it) },
-            onDismiss = { viewModel.showHapticSettingsDialog(false) }
+            onDismiss = { viewModel.showHapticSettingsDialog(false) },
+            gameOptionsContent = {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Text(
+                        text = "Difficulty",
+                        fontWeight = FontWeight.SemiBold,
+                        fontSize = 15.sp,
+                        color = if (uiState.isOledMode) Color.White else MaterialTheme.colorScheme.onSurface
+                    )
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .testTag("difficulty_row"),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        ArcadePillButton(
+                            label = "Beginner",
+                            selected = uiState.difficulty.type == DifficultyType.BEGINNER,
+                            isOledMode = uiState.isOledMode,
+                            onClick = { viewModel.setDifficulty(Difficulty.BEGINNER) },
+                            modifier = Modifier.weight(1f),
+                            testTag = "diff_beginner"
+                        )
+                        ArcadePillButton(
+                            label = "Interm.",
+                            selected = uiState.difficulty.type == DifficultyType.INTERMEDIATE,
+                            isOledMode = uiState.isOledMode,
+                            onClick = { viewModel.setDifficulty(Difficulty.INTERMEDIATE) },
+                            modifier = Modifier.weight(1f),
+                            testTag = "diff_intermediate"
+                        )
+                        ArcadePillButton(
+                            label = "Expert",
+                            selected = uiState.difficulty.type == DifficultyType.EXPERT,
+                            isOledMode = uiState.isOledMode,
+                            onClick = { viewModel.setDifficulty(Difficulty.EXPERT_PORTRAIT) },
+                            modifier = Modifier.weight(1f),
+                            testTag = "diff_expert"
+                        )
+                    }
+                    if (uiState.difficulty.rows != uiState.difficulty.cols) {
+                        OutlinedButton(
+                            onClick = { viewModel.toggleOrientation() },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .testTag("rotate_board_button")
+                        ) {
+                            Text("Rotate Board (${uiState.difficulty.cols}×${uiState.difficulty.rows})")
+                        }
+                    }
+                }
+            }
         )
     }
 

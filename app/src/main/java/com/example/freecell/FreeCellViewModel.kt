@@ -33,6 +33,7 @@ data class FreeCellUiState(
     val stats: FreeCellStats = FreeCellStats(),
     val isNewBestTime: Boolean = false,
     val showStatsDialog: Boolean = false,
+    val showSettingsDialog: Boolean = false,
     val showDailyStreakDialog: Boolean = false,
     val showVictoryDialog: Boolean = false
 )
@@ -120,9 +121,9 @@ class FreeCellViewModel(application: Application) : AndroidViewModel(application
         }
     }
 
-    fun toggleAutoFoundation() {
-        _uiState.update { it.copy(isAutoFoundationEnabled = !it.isAutoFoundationEnabled) }
-        if (_uiState.value.isAutoFoundationEnabled && _uiState.value.status == GameStatus.RUNNING) {
+    fun setAutoFoundationEnabled(enabled: Boolean) {
+        _uiState.update { it.copy(isAutoFoundationEnabled = enabled) }
+        if (enabled && _uiState.value.status == GameStatus.RUNNING) {
             scheduleAutoFoundations()
         }
     }
@@ -252,14 +253,23 @@ class FreeCellViewModel(application: Application) : AndroidViewModel(application
         _uiState.update { it.copy(hint = FreeCellEngine.findHint(state.game), selection = null) }
     }
 
-    fun toggleOledMode() {
-        AppSettingsStore.toggleOledMode(getApplication())
-        _uiState.update { it.copy(isOledMode = AppSettingsStore.settings.value.isOledMode) }
+    fun setOledMode(enabled: Boolean) {
+        AppSettingsStore.setOledMode(getApplication(), enabled)
+        _uiState.update { it.copy(isOledMode = enabled) }
     }
 
-    fun toggleSound() {
-        AppSettingsStore.toggleSound(getApplication())
-        _uiState.update { it.copy(isSoundEnabled = AppSettingsStore.settings.value.isSoundEnabled) }
+    fun setSoundEnabled(enabled: Boolean) {
+        AppSettingsStore.setSoundEnabled(getApplication(), enabled)
+        _uiState.update { it.copy(isSoundEnabled = enabled) }
+    }
+
+    fun setHapticsEnabled(enabled: Boolean) {
+        AppSettingsStore.setHapticsEnabled(getApplication(), enabled)
+        _uiState.update { it.copy(isHapticsEnabled = enabled) }
+    }
+
+    fun showSettingsDialog(show: Boolean) {
+        _uiState.update { it.copy(showSettingsDialog = show) }
     }
 
     fun showStatsDialog(show: Boolean) {

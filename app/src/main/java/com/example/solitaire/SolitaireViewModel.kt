@@ -34,6 +34,7 @@ data class SolitaireUiState(
     val stats: SolitaireStats = SolitaireStats(),
     val isNewBestTime: Boolean = false,
     val showStatsDialog: Boolean = false,
+    val showSettingsDialog: Boolean = false,
     val showDailyStreakDialog: Boolean = false,
     val showVictoryDialog: Boolean = false
 )
@@ -260,14 +261,23 @@ class SolitaireViewModel(application: Application) : AndroidViewModel(applicatio
         }
     }
 
-    fun toggleOledMode() {
-        AppSettingsStore.toggleOledMode(getApplication())
-        _uiState.update { it.copy(isOledMode = AppSettingsStore.settings.value.isOledMode) }
+    fun setOledMode(enabled: Boolean) {
+        AppSettingsStore.setOledMode(getApplication(), enabled)
+        _uiState.update { it.copy(isOledMode = enabled) }
     }
 
-    fun toggleSound() {
-        AppSettingsStore.toggleSound(getApplication())
-        _uiState.update { it.copy(isSoundEnabled = AppSettingsStore.settings.value.isSoundEnabled) }
+    fun setSoundEnabled(enabled: Boolean) {
+        AppSettingsStore.setSoundEnabled(getApplication(), enabled)
+        _uiState.update { it.copy(isSoundEnabled = enabled) }
+    }
+
+    fun setHapticsEnabled(enabled: Boolean) {
+        AppSettingsStore.setHapticsEnabled(getApplication(), enabled)
+        _uiState.update { it.copy(isHapticsEnabled = enabled) }
+    }
+
+    fun showSettingsDialog(show: Boolean) {
+        _uiState.update { it.copy(showSettingsDialog = show) }
     }
 
     fun showStatsDialog(show: Boolean) {

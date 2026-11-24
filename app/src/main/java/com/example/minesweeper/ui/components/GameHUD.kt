@@ -84,12 +84,12 @@ fun GameHUD(
             // Left: Back button, Mode switch, Daily Streak badge, and quick settings
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 if (onBackToHome != null) {
                     IconButton(
                         onClick = onBackToHome,
-                        modifier = Modifier.size(32.dp).testTag("back_to_home_button")
+                        modifier = Modifier.size(34.dp).testTag("back_to_home_button")
                     ) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
@@ -101,6 +101,7 @@ fun GameHUD(
                 }
                 ModeToggleButton(
                     currentMode = interactionMode,
+                    isOledMode = isOledMode,
                     onToggle = onToggleInteractionMode
                 )
 
@@ -113,7 +114,7 @@ fun GameHUD(
 
                 IconButton(
                     onClick = onOpenHapticSettings,
-                    modifier = Modifier.size(34.dp).testTag("haptic_settings_button")
+                    modifier = Modifier.size(36.dp).testTag("haptic_settings_button")
                 ) {
                     Icon(
                         imageVector = Icons.Default.Settings,
@@ -124,7 +125,7 @@ fun GameHUD(
                 }
                 IconButton(
                     onClick = onOpenStats,
-                    modifier = Modifier.size(34.dp).testTag("stats_button")
+                    modifier = Modifier.size(36.dp).testTag("stats_button")
                 ) {
                     Icon(
                         imageVector = Icons.Default.BarChart,
@@ -159,11 +160,15 @@ fun GameHUD(
                 text = currentDifficulty.name,
                 color = if (isDark || isOledMode) Color(0xFF94A3B8) else Color(0xFF475569),
                 fontSize = 12.sp,
-                fontWeight = FontWeight.SemiBold
+                fontWeight = FontWeight.SemiBold,
+                modifier = Modifier.padding(start = 8.dp)
             )
         }
     } else {
-        // Standard Portrait Column Layout
+        // Portrait Layout: Top nav + status bar, LED counters + Smiley, and Difficulty + Mode strip
+        val primaryText = if (isDark || isOledMode) Color.White else Color(0xFF0F172A)
+        val secondaryText = if (isOledMode) Color(0xFF94A3B8) else if (isDark) Color(0xFFCBD5E1) else Color(0xFF475569)
+
         Column(
             modifier = modifier
                 .fillMaxWidth()
@@ -171,106 +176,125 @@ fun GameHUD(
                 .padding(horizontal = 8.dp, vertical = 4.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // Top Row: Digits & Smiley & Quick Controls
+            // Top Bar: Back, Title, Daily Streak, Settings, Stats
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Mines counter
-                DigitalCounter(
-                    value = remainingMines,
-                    testTag = "counter_mines"
-                )
-
-                // Center Smiley Button
-                SmileyButton(
-                    status = status,
-                    onClick = onResetClick
-                )
-
-                // Timer counter
-                DigitalCounter(
-                    value = timerSeconds,
-                    testTag = "counter_timer"
-                )
-            }
-
-            // Secondary Action Row: Mode Switcher (Dig/Flag), Daily Streak & Quick Settings
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 4.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
                     if (onBackToHome != null) {
                         IconButton(
                             onClick = onBackToHome,
-                            modifier = Modifier.size(34.dp).testTag("back_to_home_button")
+                            modifier = Modifier
+                                .size(40.dp)
+                                .testTag("back_to_home_button")
                         ) {
                             Icon(
                                 imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                                 contentDescription = "Back to Game Selection",
-                                tint = if (isDark || isOledMode) Color.White else Color(0xFF1E293B)
+                                tint = primaryText
                             )
                         }
                     }
 
-                    // Interaction Mode Toggle (Dig ⛏️ / Flag 🚩)
-                    ModeToggleButton(
-                        currentMode = interactionMode,
-                        onToggle = onToggleInteractionMode
+                    Text(
+                        text = "Minesweeper",
+                        color = primaryText,
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(start = if (onBackToHome == null) 4.dp else 0.dp)
                     )
+                }
 
-                    // Daily Streak Counter Badge
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
                     DailyStreakBadge(
                         streak = dailyStreak,
                         isOledMode = isOledMode,
                         isDark = isDark,
                         onClick = onOpenDailyStreak
                     )
-                }
-
-                // Settings & Stats actions
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    Text(
-                        text = currentDifficulty.name,
-                        color = if (isDark || isOledMode) Color(0xFF94A3B8) else Color(0xFF475569),
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        modifier = Modifier.padding(end = 4.dp)
-                    )
 
                     IconButton(
                         onClick = onOpenHapticSettings,
-                        modifier = Modifier.testTag("haptic_settings_button")
+                        modifier = Modifier
+                            .size(40.dp)
+                            .testTag("haptic_settings_button")
                     ) {
                         Icon(
                             imageVector = Icons.Default.Settings,
                             contentDescription = "Game Settings",
-                            tint = if (isDark || isOledMode) Color.White else Color(0xFF1E293B)
+                            tint = primaryText
                         )
                     }
 
                     IconButton(
                         onClick = onOpenStats,
-                        modifier = Modifier.testTag("stats_button")
+                        modifier = Modifier
+                            .size(40.dp)
+                            .testTag("stats_button")
                     ) {
                         Icon(
                             imageVector = Icons.Default.BarChart,
                             contentDescription = "Game statistics",
-                            tint = if (isDark || isOledMode) Color.White else Color(0xFF1E293B)
+                            tint = primaryText
                         )
                     }
                 }
+            }
+
+            // Middle Row: Digital Mines Counter, Smiley Reset, Digital Timer
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 4.dp, vertical = 2.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                DigitalCounter(
+                    value = remainingMines,
+                    testTag = "counter_mines"
+                )
+
+                SmileyButton(
+                    status = status,
+                    onClick = onResetClick
+                )
+
+                DigitalCounter(
+                    value = timerSeconds,
+                    testTag = "counter_timer"
+                )
+            }
+
+            // Sub Row: Active Difficulty & Dig/Flag Mode Toggle
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 4.dp)
+                    .padding(top = 4.dp, bottom = 2.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "${currentDifficulty.name} · ${currentDifficulty.cols}×${currentDifficulty.rows}",
+                    color = secondaryText,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.testTag("minesweeper_difficulty_label")
+                )
+
+                ModeToggleButton(
+                    currentMode = interactionMode,
+                    isOledMode = isOledMode,
+                    onToggle = onToggleInteractionMode
+                )
             }
         }
     }
@@ -364,17 +388,25 @@ private fun DifficultyPill(
 @Composable
 private fun ModeToggleButton(
     currentMode: InteractionMode,
+    isOledMode: Boolean = false,
     onToggle: () -> Unit
 ) {
     val isDark = isSystemInDarkTheme()
+    val useDarkPalette = isDark || isOledMode
     val isDig = currentMode == InteractionMode.DIG
 
     Row(
         modifier = Modifier
             .testTag("mode_toggle_button")
             .clip(RoundedCornerShape(20.dp))
-            .background(if (isDark) Color(0xFF0F172A) else Color(0xFFE2E8F0))
-            .border(1.dp, if (isDark) Color(0xFF334155) else Color(0xFFCBD5E1), RoundedCornerShape(20.dp))
+            .background(
+                when {
+                    isOledMode -> Color(0xFF0A0A0A)
+                    isDark -> Color(0xFF0F172A)
+                    else -> Color(0xFFE2E8F0)
+                }
+            )
+            .border(1.dp, if (useDarkPalette) Color(0xFF334155) else Color(0xFFCBD5E1), RoundedCornerShape(20.dp))
             .clickable(
                 role = Role.Button,
                 onClickLabel = "Toggle Dig or Flag mode",
@@ -393,7 +425,7 @@ private fun ModeToggleButton(
         ) {
             Text(
                 text = "⛏️ DIG",
-                color = if (isDig) Color.White else (if (isDark) Color(0xFF94A3B8) else Color(0xFF64748B)),
+                color = if (isDig) Color.White else (if (useDarkPalette) Color(0xFF94A3B8) else Color(0xFF64748B)),
                 fontSize = 12.sp,
                 fontWeight = if (isDig) FontWeight.Bold else FontWeight.Normal
             )
@@ -408,7 +440,7 @@ private fun ModeToggleButton(
         ) {
             Text(
                 text = "🚩 FLAG",
-                color = if (!isDig) Color.White else (if (isDark) Color(0xFF94A3B8) else Color(0xFF64748B)),
+                color = if (!isDig) Color.White else (if (useDarkPalette) Color(0xFF94A3B8) else Color(0xFF64748B)),
                 fontSize = 12.sp,
                 fontWeight = if (!isDig) FontWeight.Bold else FontWeight.Normal
             )

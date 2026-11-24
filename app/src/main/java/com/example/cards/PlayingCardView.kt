@@ -53,22 +53,13 @@ fun PlayingCardView(
     val isDark = isSystemInDarkTheme()
     val shape = RoundedCornerShape(cornerRadius)
 
-    val faceBg = when {
-        isOledMode -> Color(0xFF0A0A0A)
-        isDark -> Color(0xFFF8FAFC)
-        else -> CardFaceIvory
-    }
-    val backBg = when {
-        isOledMode -> Color(0xFF111827)
-        else -> Color(0xFF1E3A8A)
-    }
+    val faceBg = if (isDark) Color(0xFFF8FAFC) else CardFaceIvory
+    val backBg = Color(0xFF1E3A8A)
 
     val borderColor = when {
         isSelected -> CardSelectedGold
         isHinted -> Color(0xFF38BDF8)
-        card.isFaceUp && isOledMode -> Color(0xFF334155)
         card.isFaceUp -> Color(0xFF94A3B8)
-        isOledMode -> Color(0xFF334155)
         else -> Color(0xFF60A5FA).copy(alpha = 0.5f)
     }
     val borderWidth = if (isSelected || isHinted) 2.dp else 1.dp
@@ -101,23 +92,19 @@ fun PlayingCardView(
             )
     ) {
         if (card.isFaceUp) {
-            val inkColor = if (isOledMode) {
-                if (card.isRed) Color(0xFFFF4D6A) else Color(0xFFF8FAFC)
-            } else {
-                if (card.isRed) CardRedSuit else CardBlackSuit
-            }
+            val inkColor = if (card.isRed) CardRedSuit else CardBlackSuit
 
             if (isSelected) {
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .background(CardSelectedGold.copy(alpha = if (isOledMode) 0.22f else 0.14f))
+                        .background(CardSelectedGold.copy(alpha = 0.14f))
                 )
             } else if (isHinted) {
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .background(Color(0xFF38BDF8).copy(alpha = if (isOledMode) 0.22f else 0.14f))
+                        .background(Color(0xFF38BDF8).copy(alpha = 0.14f))
                 )
             }
 
@@ -171,22 +158,18 @@ fun PlayingCardView(
                     .clip(RoundedCornerShape(cornerRadius - 2.dp))
                     .background(
                         Brush.linearGradient(
-                            colors = if (isOledMode) {
-                                listOf(Color(0xFF0F172A), Color(0xFF020617))
-                            } else {
-                                listOf(Color(0xFF2563EB), Color(0xFF1E3A8A))
-                            }
+                            colors = listOf(Color(0xFF2563EB), Color(0xFF1E3A8A))
                         )
                     )
                     .border(
                         width = 0.8.dp,
-                        color = if (isOledMode) Color(0xFF334155) else Color.White.copy(alpha = 0.35f),
+                        color = Color.White.copy(alpha = 0.35f),
                         shape = RoundedCornerShape(cornerRadius - 2.dp)
                     )
             ) {
                 Canvas(modifier = Modifier.fillMaxSize()) {
                     val step = 9.dp.toPx()
-                    val lineColor = if (isOledMode) Color(0xFF334155) else Color(0xFF93C5FD).copy(alpha = 0.35f)
+                    val lineColor = Color(0xFF93C5FD).copy(alpha = 0.35f)
                     var x = -size.height
                     while (x < size.width + size.height) {
                         drawLine(

@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -44,9 +45,13 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.PlatformTextStyle
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.LineHeightStyle
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -424,8 +429,12 @@ private fun SudokuBoardView(
                                 else -> if (isOledMode || isDark) Color(0xFF60A5FA) else Color(0xFF1D4ED8)
                             }
 
-                            val digitFontSize = ((boardSide.value / 9f) * 0.54f).coerceIn(13f, 26f).sp
-                            val noteFontSize = ((boardSide.value / 9f) * 0.22f).coerceIn(6.5f, 11f).sp
+                            val density = LocalDensity.current
+                            val cellSide = boardSide / 9f
+                            val subCellSide = (cellSide - 3.dp) / 3f
+                            val digitFontSize = (cellSide.value * 0.54f).coerceIn(13f, 26f).sp
+                            val noteTextDp = (subCellSide * 0.78f).coerceIn(7.dp, 12.dp)
+                            val noteFontSize = with(density) { noteTextDp.toSp() }
 
                             Box(
                                 modifier = Modifier
@@ -446,30 +455,48 @@ private fun SudokuBoardView(
                                         textAlign = TextAlign.Center
                                     )
                                 } else if (cell.notes.isNotEmpty()) {
+                                    val noteColor = if (isOledMode || isDark) Color(0xFF94A3B8) else Color(0xFF475569)
                                     Column(
                                         modifier = Modifier
                                             .fillMaxSize()
-                                            .padding(1.dp),
-                                        verticalArrangement = Arrangement.SpaceEvenly
+                                            .padding(1.5.dp)
                                     ) {
                                         for (nr in 0 until 3) {
                                             Row(
                                                 modifier = Modifier
                                                     .fillMaxWidth()
-                                                    .weight(1f),
-                                                horizontalArrangement = Arrangement.SpaceEvenly,
-                                                verticalAlignment = Alignment.CenterVertically
+                                                    .weight(1f)
                                             ) {
                                                 for (nc in 0 until 3) {
                                                     val n = nr * 3 + nc + 1
-                                                    Text(
-                                                        text = if (n in cell.notes) n.toString() else "",
-                                                        fontSize = noteFontSize,
-                                                        fontFamily = JetBrainsMonoFontFamily,
-                                                        color = if (isOledMode || isDark) Color(0xFF94A3B8) else Color(0xFF475569),
-                                                        textAlign = TextAlign.Center,
-                                                        modifier = Modifier.weight(1f)
-                                                    )
+                                                    Box(
+                                                        modifier = Modifier
+                                                            .weight(1f)
+                                                            .fillMaxHeight(),
+                                                        contentAlignment = Alignment.Center
+                                                    ) {
+                                                        if (n in cell.notes) {
+                                                            Text(
+                                                                text = n.toString(),
+                                                                color = noteColor,
+                                                                style = TextStyle(
+                                                                    fontSize = noteFontSize,
+                                                                    lineHeight = noteFontSize,
+                                                                    fontFamily = JetBrainsMonoFontFamily,
+                                                                    fontWeight = FontWeight.Medium,
+                                                                    textAlign = TextAlign.Center,
+                                                                    platformStyle = PlatformTextStyle(includeFontPadding = false),
+                                                                    lineHeightStyle = LineHeightStyle(
+                                                                        alignment = LineHeightStyle.Alignment.Center,
+                                                                        trim = LineHeightStyle.Trim.Both
+                                                                    )
+                                                                ),
+                                                                maxLines = 1,
+                                                                softWrap = false,
+                                                                modifier = Modifier.wrapContentSize(unbounded = true)
+                                                            )
+                                                        }
+                                                    }
                                                 }
                                             }
                                         }

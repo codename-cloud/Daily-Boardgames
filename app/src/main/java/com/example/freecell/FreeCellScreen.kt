@@ -1,5 +1,6 @@
 package com.example.freecell
 
+import android.content.res.Configuration
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -9,6 +10,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.displayCutoutPadding
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -34,6 +36,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
@@ -65,6 +68,7 @@ fun FreeCellScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val colors = rememberArcadeThemeColors(uiState.isOledMode)
     val game = uiState.game
+    val isLandscape = LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
@@ -77,6 +81,7 @@ fun FreeCellScreen(
                 .background(colors.screenBackground)
                 .statusBarsPadding()
                 .navigationBarsPadding()
+                .displayCutoutPadding()
         ) {
             ArcadeGameHUD(
                 title = "FreeCell #${game.dealNumber}",
@@ -90,7 +95,31 @@ fun FreeCellScreen(
                 onResetClick = { viewModel.startNewGame() },
                 onOpenSettings = { viewModel.showSettingsDialog(true) },
                 onOpenDailyStreak = { viewModel.showDailyStreakDialog(true) },
-                onOpenStats = { viewModel.showStatsDialog(true) }
+                onOpenStats = { viewModel.showStatsDialog(true) },
+                landscapeActionsContent = {
+                    ArcadePillButton(
+                        label = "Undo",
+                        selected = false,
+                        enabled = uiState.canUndo,
+                        isOledMode = uiState.isOledMode,
+                        onClick = { viewModel.undo() },
+                        testTag = "freecell_undo_button"
+                    )
+                    ArcadePillButton(
+                        label = "Hint",
+                        selected = false,
+                        isOledMode = uiState.isOledMode,
+                        onClick = { viewModel.requestHint() },
+                        testTag = "freecell_hint_button"
+                    )
+                    ArcadePillButton(
+                        label = "Replay",
+                        selected = false,
+                        isOledMode = uiState.isOledMode,
+                        onClick = { viewModel.restartCurrentDeal() },
+                        testTag = "freecell_replay_button"
+                    )
+                }
             ) {
                 Row(
                     modifier = Modifier
@@ -159,19 +188,29 @@ fun FreeCellScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .weight(1f)
-                    .padding(horizontal = 5.dp, vertical = 6.dp)
+                    .padding(
+                        horizontal = if (isLandscape) 8.dp else 5.dp,
+                        vertical = if (isLandscape) 3.dp else 6.dp
+                    )
                     .testTag("freecell_board")
             ) {
-                val gap = 3.dp
+                val gap = if (isLandscape) 4.dp else 3.dp
                 val boardMaxHeight = maxHeight
-                val cardWidth = ((maxWidth - gap * 7) / 8f).coerceAtMost(70.dp)
+                val rowSpacing = if (isLandscape) 6.dp else 10.dp
+                val widthBasedCardWidth = ((maxWidth - gap * 7) / 8f).coerceAtMost(70.dp)
+                val maxCardHeightForLayout = if (isLandscape) {
+                    (boardMaxHeight * 0.28f).coerceAtLeast(48.dp)
+                } else {
+                    200.dp
+                }
+                val cardWidth = minOf(widthBasedCardWidth, maxCardHeightForLayout * 0.70f)
                 val cardHeight = cardWidth / 0.70f
                 val cornerFont = (cardWidth.value * 0.25f).coerceIn(9.5f, 14f).sp
                 val centerFont = (cardWidth.value * 0.42f).coerceIn(14f, 24f).sp
 
                 Column(
                     modifier = Modifier.fillMaxSize(),
-                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                    verticalArrangement = Arrangement.spacedBy(rowSpacing)
                 ) {
                     // Top Row: 4 Free Cells + 4 Foundations
                     Row(
@@ -238,7 +277,7 @@ fun FreeCellScreen(
                     }
 
                     // 8 Tableau Columns
-                    val tableauAvailableHeight = (boardMaxHeight - cardHeight - 16.dp).coerceAtLeast(180.dp)
+                    val tableauAvailableHeight = (boardMaxHeight - cardHeight - rowSpacing).coerceAtLeast(48.dp)
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -376,7 +415,7 @@ private fun computeFreeCellStep(
     cardHeight: Dp
 ): Dp {
     if (count <= 1) return 0.dp
-    val maxUsable = (availableHeight - cardHeight).coerceAtLeast(36.dp)
+    val maxUsable = (availableHeight - cardHeight).coerceAtLeast(16.dp)
     val defaultStep = 23.dp
     val needed = defaultStep * (count - 1)
     return if (needed > maxUsable) maxUsable / (count - 1) else defaultStep

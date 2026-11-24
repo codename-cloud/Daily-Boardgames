@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.displayCutoutPadding
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -91,6 +92,7 @@ fun SudokuScreen(
                 .background(colors.screenBackground)
                 .statusBarsPadding()
                 .navigationBarsPadding()
+                .displayCutoutPadding()
         ) {
             ArcadeGameHUD(
                 title = "Sudoku",
@@ -104,7 +106,24 @@ fun SudokuScreen(
                 onResetClick = { viewModel.startNewGame() },
                 onOpenSettings = { viewModel.showSettingsDialog(true) },
                 onOpenDailyStreak = { viewModel.showDailyStreakDialog(true) },
-                onOpenStats = { viewModel.showStatsDialog(true) }
+                onOpenStats = { viewModel.showStatsDialog(true) },
+                landscapeActionsContent = {
+                    Text(
+                        text = uiState.difficulty.label,
+                        color = colors.secondaryText,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        modifier = Modifier.padding(end = 6.dp)
+                    )
+                    Text(
+                        text = "Mistakes: ${uiState.mistakes}",
+                        color = if (uiState.mistakes > 0) Color(0xFFF87171) else colors.secondaryText,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold,
+                        fontFamily = JetBrainsMonoFontFamily,
+                        modifier = Modifier.testTag("sudoku_mistakes_text")
+                    )
+                }
             ) {
                 Row(
                     modifier = Modifier

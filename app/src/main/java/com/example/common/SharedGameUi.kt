@@ -1,5 +1,6 @@
 package com.example.common
 
+import android.content.res.Configuration
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -8,6 +9,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -30,10 +32,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.minesweeper.data.DailyStreak
@@ -116,37 +120,39 @@ fun ArcadeGameHUD(
     onOpenDailyStreak: () -> Unit,
     onOpenStats: () -> Unit,
     modifier: Modifier = Modifier,
+    landscapeActionsContent: (@Composable RowScope.() -> Unit)? = null,
     subRowContent: (@Composable () -> Unit)? = null
 ) {
     val colors = rememberArcadeThemeColors(isOledMode)
     val isDark = isSystemInDarkTheme()
+    val configuration = LocalConfiguration.current
+    val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
 
-    Column(
-        modifier = modifier
-            .fillMaxWidth()
-            .background(colors.hudBackground)
-            .padding(horizontal = 8.dp, vertical = 4.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        // Navigation + Quick settings bar
+    if (isLandscape) {
+        // Single-row compact HUD in landscape to maximize vertical board space
         Row(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = modifier
+                .fillMaxWidth()
+                .background(colors.hudBackground)
+                .padding(horizontal = 8.dp, vertical = 2.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
             Row(
+                modifier = Modifier.weight(1f),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(4.dp)
             ) {
                 IconButton(
                     onClick = onBackClick,
                     modifier = Modifier
-                        .size(40.dp)
+                        .size(34.dp)
                         .testTag("back_to_home_button")
                 ) {
                     Icon(
                         imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                         contentDescription = "Back to Game Selection",
+                        modifier = Modifier.size(18.dp),
                         tint = colors.primaryText
                     )
                 }
@@ -154,15 +160,13 @@ fun ArcadeGameHUD(
                 Text(
                     text = title,
                     color = colors.primaryText,
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.Bold
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f, fill = false)
                 )
-            }
 
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(2.dp)
-            ) {
                 DailyStreakBadge(
                     streak = dailyStreak,
                     isOledMode = isOledMode,
@@ -173,12 +177,13 @@ fun ArcadeGameHUD(
                 IconButton(
                     onClick = onOpenSettings,
                     modifier = Modifier
-                        .size(40.dp)
+                        .size(34.dp)
                         .testTag("game_settings_button")
                 ) {
                     Icon(
                         imageVector = Icons.Default.Settings,
                         contentDescription = "Game Settings",
+                        modifier = Modifier.size(19.dp),
                         tint = colors.primaryText
                     )
                 }
@@ -186,45 +191,155 @@ fun ArcadeGameHUD(
                 IconButton(
                     onClick = onOpenStats,
                     modifier = Modifier
-                        .size(40.dp)
+                        .size(34.dp)
                         .testTag("stats_button")
                 ) {
                     Icon(
                         imageVector = Icons.Default.BarChart,
                         contentDescription = "Game statistics",
+                        modifier = Modifier.size(19.dp),
                         tint = colors.primaryText
                     )
                 }
             }
-        }
 
-        // Signature Minesweeper LED counters + Smiley reset button
-        Row(
-            modifier = Modifier
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.padding(horizontal = 6.dp)
+            ) {
+                DigitalCounter(
+                    value = leftCounterValue,
+                    testTag = leftCounterTag
+                )
+
+                SmileyButton(
+                    status = status,
+                    onClick = onResetClick
+                )
+
+                DigitalCounter(
+                    value = timerSeconds,
+                    testTag = "counter_timer"
+                )
+            }
+
+            Row(
+                modifier = Modifier.weight(1f),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(4.dp, Alignment.End)
+            ) {
+                if (landscapeActionsContent != null) {
+                    landscapeActionsContent()
+                }
+            }
+        }
+    } else {
+        Column(
+            modifier = modifier
                 .fillMaxWidth()
-                .padding(horizontal = 4.dp, vertical = 2.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
+                .background(colors.hudBackground)
+                .padding(horizontal = 8.dp, vertical = 4.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            DigitalCounter(
-                value = leftCounterValue,
-                testTag = leftCounterTag
-            )
+            // Navigation + Quick settings bar
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    IconButton(
+                        onClick = onBackClick,
+                        modifier = Modifier
+                            .size(40.dp)
+                            .testTag("back_to_home_button")
+                    ) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Back to Game Selection",
+                            tint = colors.primaryText
+                        )
+                    }
 
-            SmileyButton(
-                status = status,
-                onClick = onResetClick
-            )
+                    Text(
+                        text = title,
+                        color = colors.primaryText,
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
 
-            DigitalCounter(
-                value = timerSeconds,
-                testTag = "counter_timer"
-            )
-        }
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(2.dp)
+                ) {
+                    DailyStreakBadge(
+                        streak = dailyStreak,
+                        isOledMode = isOledMode,
+                        isDark = isDark,
+                        onClick = onOpenDailyStreak
+                    )
 
-        if (subRowContent != null) {
-            Spacer(modifier = Modifier.height(4.dp))
-            subRowContent()
+                    IconButton(
+                        onClick = onOpenSettings,
+                        modifier = Modifier
+                            .size(40.dp)
+                            .testTag("game_settings_button")
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Settings,
+                            contentDescription = "Game Settings",
+                            tint = colors.primaryText
+                        )
+                    }
+
+                    IconButton(
+                        onClick = onOpenStats,
+                        modifier = Modifier
+                            .size(40.dp)
+                            .testTag("stats_button")
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.BarChart,
+                            contentDescription = "Game statistics",
+                            tint = colors.primaryText
+                        )
+                    }
+                }
+            }
+
+            // Signature Minesweeper LED counters + Smiley reset button
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 4.dp, vertical = 2.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                DigitalCounter(
+                    value = leftCounterValue,
+                    testTag = leftCounterTag
+                )
+
+                SmileyButton(
+                    status = status,
+                    onClick = onResetClick
+                )
+
+                DigitalCounter(
+                    value = timerSeconds,
+                    testTag = "counter_timer"
+                )
+            }
+
+            if (subRowContent != null) {
+                Spacer(modifier = Modifier.height(4.dp))
+                subRowContent()
+            }
         }
     }
 }

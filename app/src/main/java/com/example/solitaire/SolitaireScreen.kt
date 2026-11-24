@@ -1,5 +1,6 @@
 package com.example.solitaire
 
+import android.content.res.Configuration
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -10,6 +11,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.displayCutoutPadding
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -34,6 +36,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -65,6 +68,7 @@ fun SolitaireScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val colors = rememberArcadeThemeColors(uiState.isOledMode)
     val game = uiState.game
+    val isLandscape = LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
@@ -77,6 +81,7 @@ fun SolitaireScreen(
                 .background(colors.screenBackground)
                 .statusBarsPadding()
                 .navigationBarsPadding()
+                .displayCutoutPadding()
         ) {
             ArcadeGameHUD(
                 title = "Solitaire",
@@ -90,7 +95,41 @@ fun SolitaireScreen(
                 onResetClick = { viewModel.startNewGame() },
                 onOpenSettings = { viewModel.showSettingsDialog(true) },
                 onOpenDailyStreak = { viewModel.showDailyStreakDialog(true) },
-                onOpenStats = { viewModel.showStatsDialog(true) }
+                onOpenStats = { viewModel.showStatsDialog(true) },
+                landscapeActionsContent = {
+                    if (uiState.canAutoComplete && !uiState.isAutoCompleting) {
+                        ArcadePillButton(
+                            label = "Auto",
+                            selected = true,
+                            isOledMode = uiState.isOledMode,
+                            accentColor = Color(0xFF16A34A),
+                            onClick = { viewModel.triggerAutoComplete() },
+                            testTag = "solitaire_autocomplete_button"
+                        )
+                    }
+                    ArcadePillButton(
+                        label = "Undo",
+                        selected = false,
+                        enabled = uiState.canUndo,
+                        isOledMode = uiState.isOledMode,
+                        onClick = { viewModel.undo() },
+                        testTag = "solitaire_undo_button"
+                    )
+                    ArcadePillButton(
+                        label = "Hint",
+                        selected = false,
+                        isOledMode = uiState.isOledMode,
+                        onClick = { viewModel.requestHint() },
+                        testTag = "solitaire_hint_button"
+                    )
+                    ArcadePillButton(
+                        label = "Replay",
+                        selected = false,
+                        isOledMode = uiState.isOledMode,
+                        onClick = { viewModel.restartCurrentDeal() },
+                        testTag = "solitaire_replay_button"
+                    )
+                }
             ) {
                 Row(
                     modifier = Modifier
@@ -170,19 +209,29 @@ fun SolitaireScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .weight(1f)
-                    .padding(horizontal = 6.dp, vertical = 6.dp)
+                    .padding(
+                        horizontal = if (isLandscape) 8.dp else 6.dp,
+                        vertical = if (isLandscape) 3.dp else 6.dp
+                    )
                     .testTag("solitaire_board")
             ) {
                 val gap = 4.dp
                 val boardMaxHeight = maxHeight
-                val cardWidth = ((maxWidth - gap * 6) / 7f).coerceAtMost(74.dp)
+                val rowSpacing = if (isLandscape) 6.dp else 10.dp
+                val widthBasedCardWidth = ((maxWidth - gap * 6) / 7f).coerceAtMost(74.dp)
+                val maxCardHeightForLayout = if (isLandscape) {
+                    (boardMaxHeight * 0.28f).coerceAtLeast(48.dp)
+                } else {
+                    200.dp
+                }
+                val cardWidth = minOf(widthBasedCardWidth, maxCardHeightForLayout * 0.70f)
                 val cardHeight = cardWidth / 0.70f
                 val cornerFont = (cardWidth.value * 0.24f).coerceIn(10f, 15f).sp
                 val centerFont = (cardWidth.value * 0.42f).coerceIn(16f, 26f).sp
 
                 Column(
                     modifier = Modifier.fillMaxSize(),
-                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                    verticalArrangement = Arrangement.spacedBy(rowSpacing)
                 ) {
                     // Top Row: Stock + Waste + Spacer + 4 Foundations
                     Row(
@@ -292,7 +341,7 @@ fun SolitaireScreen(
                     }
 
                     // 7 Tableau Columns
-                    val tableauAvailableHeight = (boardMaxHeight - cardHeight - 16.dp).coerceAtLeast(180.dp)
+                    val tableauAvailableHeight = (boardMaxHeight - cardHeight - rowSpacing).coerceAtLeast(48.dp)
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()

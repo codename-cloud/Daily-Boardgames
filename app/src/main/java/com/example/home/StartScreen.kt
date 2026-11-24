@@ -88,7 +88,6 @@ data class GameMenuEntry(
 @Composable
 fun StartScreen(
     games: List<GameMenuEntry>,
-    totalWins: Int,
     onSelectGame: (GameDestination) -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -191,50 +190,27 @@ fun StartScreen(
                                 .clip(RoundedCornerShape(10.dp))
                                 .background(colors.cardBackground)
                                 .border(1.dp, colors.cardBorder, RoundedCornerShape(10.dp))
-                                .padding(horizontal = 12.dp, vertical = 10.dp),
+                                .padding(horizontal = 14.dp, vertical = 10.dp),
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Column {
-                                Text(
-                                    text = "ARCADE COLLECTION",
-                                    fontFamily = JetBrainsMonoFontFamily,
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 11.sp,
-                                    color = Color(0xFF60A5FA)
-                                )
-                                Text(
-                                    text = if (settings.isOledMode) "OLED Pure Black Theme" else "Classic Slate Theme",
-                                    fontSize = 13.sp,
-                                    fontWeight = FontWeight.SemiBold,
-                                    color = colors.primaryText
-                                )
-                            }
+                            Text(
+                                text = "Daily Wins",
+                                fontFamily = OutfitFontFamily,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 17.sp,
+                                color = colors.primaryText
+                            )
 
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(10.dp)
-                            ) {
-                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                    DigitalCounter(value = totalWins, testTag = "home_total_wins_counter")
-                                    Text(
-                                        text = "WINS",
-                                        fontSize = 9.sp,
-                                        fontFamily = JetBrainsMonoFontFamily,
-                                        color = colors.secondaryText,
-                                        modifier = Modifier.padding(top = 2.dp)
-                                    )
-                                }
-                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                    DigitalCounter(value = completedTodayCount, testTag = "home_today_counter")
-                                    Text(
-                                        text = "TODAY / 4",
-                                        fontSize = 9.sp,
-                                        fontFamily = JetBrainsMonoFontFamily,
-                                        color = colors.secondaryText,
-                                        modifier = Modifier.padding(top = 2.dp)
-                                    )
-                                }
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                DigitalCounter(value = completedTodayCount, testTag = "home_today_counter")
+                                Text(
+                                    text = "TODAY / 4",
+                                    fontSize = 9.sp,
+                                    fontFamily = JetBrainsMonoFontFamily,
+                                    color = colors.secondaryText,
+                                    modifier = Modifier.padding(top = 2.dp)
+                                )
                             }
                         }
                     }

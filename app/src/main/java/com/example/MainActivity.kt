@@ -56,7 +56,6 @@ class MainActivity : ComponentActivity() {
                         null -> {
                             val mineWins = mineState.stats.values.sumOf { it.won }
                             val sudokuWins = sudokuState.stats.values.sumOf { it.won }
-                            val totalWins = mineWins + solitaireState.stats.won + freeCellState.stats.won + sudokuWins
 
                             val menuEntries = listOf(
                                 GameMenuEntry(
@@ -67,7 +66,7 @@ class MainActivity : ComponentActivity() {
                                     dailyStreak = mineState.dailyStreak,
                                     isInProgress = mineState.status == GameStatus.RUNNING,
                                     accentColor = Color(0xFF2563EB),
-                                    imageRes = R.drawable.img_game_minesweeper,
+                                    imageRes = R.drawable.simple_minesweeper_thumb_1795482654311,
                                     testTag = "game_card_minesweeper"
                                 ),
                                 GameMenuEntry(
@@ -79,7 +78,7 @@ class MainActivity : ComponentActivity() {
                                     dailyStreak = solitaireState.dailyStreak,
                                     isInProgress = solitaireState.status == GameStatus.RUNNING,
                                     accentColor = Color(0xFF16A34A),
-                                    imageRes = R.drawable.img_game_solitaire,
+                                    imageRes = R.drawable.simple_solitaire_thumb_1795482654755,
                                     testTag = "game_card_solitaire"
                                 ),
                                 GameMenuEntry(
@@ -91,7 +90,7 @@ class MainActivity : ComponentActivity() {
                                     dailyStreak = freeCellState.dailyStreak,
                                     isInProgress = freeCellState.status == GameStatus.RUNNING,
                                     accentColor = Color(0xFF0D9488),
-                                    imageRes = R.drawable.img_game_freecell,
+                                    imageRes = R.drawable.simple_freecell_thumb_1795482655874,
                                     testTag = "game_card_freecell"
                                 ),
                                 GameMenuEntry(
@@ -102,14 +101,13 @@ class MainActivity : ComponentActivity() {
                                     dailyStreak = sudokuState.dailyStreak,
                                     isInProgress = sudokuState.status == GameStatus.RUNNING,
                                     accentColor = Color(0xFFD97706),
-                                    imageRes = R.drawable.img_game_sudoku,
+                                    imageRes = R.drawable.simple_sudoku_thumb_1795482655682,
                                     testTag = "game_card_sudoku"
                                 )
                             )
 
                             StartScreen(
                                 games = menuEntries,
-                                totalWins = totalWins,
                                 onSelectGame = { selected -> activeGame = selected }
                             )
                         }

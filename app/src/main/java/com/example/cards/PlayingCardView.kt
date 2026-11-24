@@ -7,12 +7,16 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -23,21 +27,23 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.PlatformTextStyle
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.LineHeightStyle
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.ui.theme.CardBlackSuit
-import com.example.ui.theme.CardFaceIvory
-import com.example.ui.theme.CardRedSuit
 import com.example.ui.theme.CardSelectedGold
-import com.example.ui.theme.JetBrainsMonoFontFamily
 
+@Suppress("UNUSED_PARAMETER")
 @Composable
 fun PlayingCardView(
     card: PlayingCard,
@@ -47,20 +53,20 @@ fun PlayingCardView(
     isOledMode: Boolean = false,
     cornerFontSize: TextUnit = 13.sp,
     centerFontSize: TextUnit = 22.sp,
-    cornerRadius: Dp = 6.dp,
+    cornerRadius: Dp = 5.dp,
     onClick: (() -> Unit)? = null
 ) {
-    val isDark = isSystemInDarkTheme()
     val shape = RoundedCornerShape(cornerRadius)
 
-    val faceBg = if (isDark) Color(0xFFF8FAFC) else CardFaceIvory
+    // Keep card front & back colors identical between OLED and non-OLED modes
+    val faceBg = Color.White
     val backBg = Color(0xFF1E3A8A)
 
     val borderColor = when {
         isSelected -> CardSelectedGold
         isHinted -> Color(0xFF38BDF8)
-        card.isFaceUp -> Color(0xFF94A3B8)
-        else -> Color(0xFF60A5FA).copy(alpha = 0.5f)
+        card.isFaceUp -> Color(0xFF334155)
+        else -> Color(0xFF60A5FA).copy(alpha = 0.55f)
     }
     val borderWidth = if (isSelected || isHinted) 2.dp else 1.dp
 
@@ -70,7 +76,7 @@ fun PlayingCardView(
         "Face-down card"
     }
 
-    Box(
+    BoxWithConstraints(
         modifier = modifier
             .aspectRatio(0.70f)
             .shadow(
@@ -91,62 +97,98 @@ fun PlayingCardView(
                 }
             )
     ) {
+        val cardWidth = maxWidth
+        val cardHeight = maxHeight
+        val density = LocalDensity.current
+
         if (card.isFaceUp) {
-            val inkColor = if (card.isRed) CardRedSuit else CardBlackSuit
+            val inkColor = if (card.isRed) Color(0xFFEB1414) else Color(0xFF111111)
+            val isCourt = card.rank.value >= 11
+            val isTen = card.rank == Rank.TEN
+
+            val headerHeight = cardHeight * 0.28f
+            val hPad = (cardWidth * 0.055f).coerceAtLeast(2.dp)
+            val rankFontDp = if (isTen) cardWidth * 0.295f else cardWidth * 0.35f
+            val rankFontSize = with(density) { rankFontDp.toSp() }
+            val topSuitSize = (cardWidth * 0.27f).coerceAtLeast(9.dp)
+
+            Column(modifier = Modifier.fillMaxSize()) {
+                // Large-index top bar: bold rank on top-left, crisp suit pip on top-right
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(headerHeight)
+                        .padding(horizontal = hPad, vertical = 1.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = card.rank.label,
+                        color = inkColor,
+                        style = TextStyle(
+                            fontSize = rankFontSize,
+                            lineHeight = rankFontSize,
+                            fontFamily = FontFamily.SansSerif,
+                            fontWeight = FontWeight.Medium,
+                            letterSpacing = if (isTen) (-0.9).sp else (-0.2).sp,
+                            platformStyle = PlatformTextStyle(includeFontPadding = false),
+                            lineHeightStyle = LineHeightStyle(
+                                alignment = LineHeightStyle.Alignment.Center,
+                                trim = LineHeightStyle.Trim.Both
+                            )
+                        ),
+                        maxLines = 1,
+                        softWrap = false,
+                        modifier = Modifier.wrapContentSize(unbounded = true)
+                    )
+
+                    SuitSymbolCanvas(
+                        suit = card.suit,
+                        color = inkColor,
+                        modifier = Modifier.size(topSuitSize)
+                    )
+                }
+
+                // Lower card body: framed royal illustration for J/Q/K, giant crisp suit pip for A-10
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f)
+                        .padding(
+                            start = if (isCourt) hPad else 2.dp,
+                            end = if (isCourt) hPad else 2.dp,
+                            bottom = if (isCourt) hPad else 3.dp
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    if (isCourt) {
+                        CourtCardArtwork(
+                            rank = card.rank,
+                            suit = card.suit,
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    } else {
+                        val centerPipSize = minOf(cardWidth * 0.72f, cardHeight * 0.50f)
+                        SuitSymbolCanvas(
+                            suit = card.suit,
+                            color = inkColor,
+                            modifier = Modifier.size(centerPipSize)
+                        )
+                    }
+                }
+            }
 
             if (isSelected) {
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .background(CardSelectedGold.copy(alpha = 0.14f))
+                        .background(CardSelectedGold.copy(alpha = 0.16f))
                 )
             } else if (isHinted) {
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .background(Color(0xFF38BDF8).copy(alpha = 0.14f))
-                )
-            }
-
-            // Compact top strip so overlapping cascades always stay readable
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 3.dp, vertical = 2.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = card.rank.label,
-                    color = inkColor,
-                    fontFamily = JetBrainsMonoFontFamily,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = cornerFontSize,
-                    lineHeight = cornerFontSize,
-                    maxLines = 1
-                )
-                Text(
-                    text = card.suit.symbol,
-                    color = inkColor,
-                    fontSize = cornerFontSize,
-                    lineHeight = cornerFontSize,
-                    maxLines = 1
-                )
-            }
-
-            // Center emblem
-            Column(
-                modifier = Modifier
-                    .align(Alignment.Center)
-                    .padding(top = 8.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Text(
-                    text = if (card.rank.value >= 11) "${card.rank.label}${card.suit.symbol}" else card.suit.symbol,
-                    color = inkColor.copy(alpha = 0.92f),
-                    fontSize = if (card.rank.value >= 11) centerFontSize * 0.78f else centerFontSize,
-                    fontWeight = FontWeight.Bold,
-                    textAlign = TextAlign.Center
+                        .background(Color(0xFF38BDF8).copy(alpha = 0.16f))
                 )
             }
         } else {
@@ -155,7 +197,7 @@ fun PlayingCardView(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(2.5.dp)
-                    .clip(RoundedCornerShape(cornerRadius - 2.dp))
+                    .clip(RoundedCornerShape((cornerRadius - 2.dp).coerceAtLeast(2.dp)))
                     .background(
                         Brush.linearGradient(
                             colors = listOf(Color(0xFF2563EB), Color(0xFF1E3A8A))
@@ -164,7 +206,7 @@ fun PlayingCardView(
                     .border(
                         width = 0.8.dp,
                         color = Color.White.copy(alpha = 0.35f),
-                        shape = RoundedCornerShape(cornerRadius - 2.dp)
+                        shape = RoundedCornerShape((cornerRadius - 2.dp).coerceAtLeast(2.dp))
                     )
             ) {
                 Canvas(modifier = Modifier.fillMaxSize()) {
@@ -199,7 +241,7 @@ fun EmptyCardSlot(
     isHighlighted: Boolean = false,
     isOledMode: Boolean = false,
     tint: Color? = null,
-    cornerRadius: Dp = 6.dp,
+    cornerRadius: Dp = 5.dp,
     onClick: (() -> Unit)? = null
 ) {
     val isDark = isSystemInDarkTheme()

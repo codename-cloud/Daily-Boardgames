@@ -87,11 +87,9 @@ object AppSettingsStore {
         val seen = GameDestination.entries.filter { dest ->
             prefs.getBoolean(tutorialPrefKey(dest), false)
         }.toSet()
-        val storedRepo = prefs.getString("github_repo", null)
-        val effectiveRepo = when {
-            storedRepo != null -> storedRepo
-            else -> normalizeGithubRepo(BuildConfig.DEFAULT_GITHUB_REPO).orEmpty()
-        }
+        val defaultRepo = normalizeGithubRepo(BuildConfig.DEFAULT_GITHUB_REPO).orEmpty()
+        val storedRepo = prefs.getString("github_repo", null).orEmpty()
+        val effectiveRepo = defaultRepo.ifEmpty { storedRepo }
         val storedOled = prefs.getBoolean("oled_mode", false)
         _settings.value = AppSettings(
             themeMode = themeMode,

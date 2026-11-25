@@ -30,6 +30,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -60,7 +61,7 @@ fun GitHubUpdateDialog(
     val updateState by GitHubUpdateManager.uiState.collectAsStateWithLifecycle()
     val colors = rememberArcadeThemeColors(isOledMode)
 
-    var repoInput by remember(settings.githubRepo) { mutableStateOf(settings.githubRepo) }
+    val configuredRepo = settings.githubRepo
     var browserLaunchError by remember { mutableStateOf<String?>(null) }
 
     AlertDialog(
@@ -111,14 +112,17 @@ fun GitHubUpdateDialog(
                 verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 OutlinedTextField(
-                    value = repoInput,
-                    onValueChange = {
-                        repoInput = it
-                        browserLaunchError = null
-                    },
+                    value = configuredRepo.ifBlank { "Configured automatically by GitHub Actions" },
+                    onValueChange = {},
+                    readOnly = true,
+                    enabled = false,
                     label = { Text("GitHub Repository") },
-                    placeholder = { Text("owner/repo or GitHub URL") },
                     singleLine = true,
+                    colors = OutlinedTextFieldDefaults.colors(
+                        disabledTextColor = if (configuredRepo.isNotBlank()) colors.primaryText else colors.secondaryText,
+                        disabledBorderColor = colors.cardBorder,
+                        disabledLabelColor = colors.secondaryText
+                    ),
                     modifier = Modifier
                         .fillMaxWidth()
                         .testTag("github_repo_input")
@@ -127,13 +131,9 @@ fun GitHubUpdateDialog(
                 Button(
                     onClick = {
                         browserLaunchError = null
-                        val normalized = AppSettingsStore.setGithubRepo(context, repoInput)
-                        if (normalized.isNotEmpty()) {
-                            repoInput = normalized
-                        }
-                        GitHubUpdateManager.checkForUpdates(repoInput)
+                        GitHubUpdateManager.checkForUpdates(configuredRepo)
                     },
-                    enabled = updateState.status !is GitHubCheckStatus.Checking,
+                    enabled = configuredRepo.isNotBlank() && updateState.status !is GitHubCheckStatus.Checking,
                     modifier = Modifier
                         .fillMaxWidth()
                         .testTag("check_github_updates_button"),
@@ -164,7 +164,11 @@ fun GitHubUpdateDialog(
                             borderColor = colors.cardBorder
                         ) {
                             Text(
-                                text = "Linked to the GitHub Actions APK workflow. Enter your repository (owner/repo) to check for new APK releases or builds.",
+                                text = if (configuredRepo.isNotBlank()) {
+                                    "Linked to $configuredRepo via the GitHub Actions APK workflow. Tap Check for Updates to check for new builds."
+                                } else {
+                                    "Repository is locked to the GitHub Actions build. Install an APK built by the GitHub workflow to check for updates."
+                                },
                                 fontSize = 12.5.sp,
                                 lineHeight = 18.sp,
                                 color = colors.secondaryText

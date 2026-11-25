@@ -247,71 +247,76 @@ fun SolitaireScreen(
                     modifier = Modifier.fillMaxSize(),
                     verticalArrangement = Arrangement.spacedBy(rowSpacing)
                 ) {
-                    // Top Row: Stock + Waste + Spacer + 4 Foundations
+                    // Top Row: (Stock + Waste) + Spacer + 4 Foundations
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.Top
                     ) {
-                        // Stock
-                        Box(modifier = Modifier.width(cardWidth)) {
-                            if (game.stock.isNotEmpty()) {
-                                PlayingCardView(
-                                    card = game.stock.last(),
-                                    isOledMode = uiState.isOledMode,
-                                    isHinted = uiState.hint?.source == SolitaireSelection.Waste && game.waste.isEmpty(),
-                                    cornerFontSize = cornerFont,
-                                    centerFontSize = centerFont,
-                                    onClick = { viewModel.onStockClick() },
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .testTag("solitaire_stock_pile")
-                                )
-                            } else {
-                                EmptyCardSlot(
-                                    label = "↻",
-                                    isOledMode = uiState.isOledMode,
-                                    onClick = { viewModel.onStockClick() },
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .testTag("solitaire_stock_pile")
-                                )
-                            }
-                        }
-
-                        // Waste (fan up to 3 visible cards in Draw 3 mode)
-                        Box(
-                            modifier = Modifier
-                                .width(cardWidth * 1.45f)
-                                .height(cardHeight)
-                                .testTag("solitaire_waste_pile")
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalAlignment = Alignment.Top
                         ) {
-                            if (game.waste.isEmpty()) {
-                                EmptyCardSlot(
-                                    label = "",
-                                    isOledMode = uiState.isOledMode,
-                                    modifier = Modifier.width(cardWidth)
-                                )
-                            } else {
-                                val visibleWaste = if (game.drawMode == SolitaireDrawMode.DRAW_3) {
-                                    game.waste.takeLast(3)
-                                } else {
-                                    listOf(game.waste.last())
-                                }
-                                visibleWaste.forEachIndexed { idx, card ->
-                                    val isTop = idx == visibleWaste.lastIndex
+                            // Stock
+                            Box(modifier = Modifier.width(cardWidth)) {
+                                if (game.stock.isNotEmpty()) {
                                     PlayingCardView(
-                                        card = card,
+                                        card = game.stock.last(),
                                         isOledMode = uiState.isOledMode,
-                                        isSelected = isTop && uiState.selection == SolitaireSelection.Waste,
-                                        isHinted = isTop && uiState.hint?.source == SolitaireSelection.Waste,
+                                        isHinted = uiState.hint?.source == SolitaireSelection.Waste && game.waste.isEmpty(),
                                         cornerFontSize = cornerFont,
                                         centerFontSize = centerFont,
-                                        onClick = if (isTop) ({ viewModel.onWasteClick() }) else null,
+                                        onClick = { viewModel.onStockClick() },
                                         modifier = Modifier
-                                            .width(cardWidth)
-                                            .offset(x = (idx * 12).dp)
+                                            .fillMaxWidth()
+                                            .testTag("solitaire_stock_pile")
                                     )
+                                } else {
+                                    EmptyCardSlot(
+                                        label = "↻",
+                                        isOledMode = uiState.isOledMode,
+                                        onClick = { viewModel.onStockClick() },
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .testTag("solitaire_stock_pile")
+                                    )
+                                }
+                            }
+
+                            // Waste (fan up to 3 visible cards in Draw 3 mode)
+                            Box(
+                                modifier = Modifier
+                                    .width(cardWidth * 1.45f)
+                                    .height(cardHeight)
+                                    .testTag("solitaire_waste_pile")
+                            ) {
+                                if (game.waste.isEmpty()) {
+                                    EmptyCardSlot(
+                                        label = "",
+                                        isOledMode = uiState.isOledMode,
+                                        modifier = Modifier.width(cardWidth)
+                                    )
+                                } else {
+                                    val visibleWaste = if (game.drawMode == SolitaireDrawMode.DRAW_3) {
+                                        game.waste.takeLast(3)
+                                    } else {
+                                        listOf(game.waste.last())
+                                    }
+                                    visibleWaste.forEachIndexed { idx, card ->
+                                        val isTop = idx == visibleWaste.lastIndex
+                                        PlayingCardView(
+                                            card = card,
+                                            isOledMode = uiState.isOledMode,
+                                            isSelected = isTop && uiState.selection == SolitaireSelection.Waste,
+                                            isHinted = isTop && uiState.hint?.source == SolitaireSelection.Waste,
+                                            cornerFontSize = cornerFont,
+                                            centerFontSize = centerFont,
+                                            onClick = if (isTop) ({ viewModel.onWasteClick() }) else null,
+                                            modifier = Modifier
+                                                .width(cardWidth)
+                                                .offset(x = (idx * 12).dp)
+                                        )
+                                    }
                                 }
                             }
                         }

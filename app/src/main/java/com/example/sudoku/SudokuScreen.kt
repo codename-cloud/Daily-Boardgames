@@ -39,6 +39,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -46,6 +47,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
@@ -57,10 +59,13 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.example.common.AppSettingsStore
 import com.example.common.ArcadeGameHUD
 import com.example.common.ArcadePillButton
 import com.example.common.ArcadeVictoryDialog
+import com.example.common.GameTutorialDialog
 import com.example.common.rememberArcadeThemeColors
+import com.example.home.GameDestination
 import com.example.minesweeper.ui.components.DailyStreakDialog
 import com.example.minesweeper.ui.components.HapticSettingsDialog
 import com.example.ui.theme.JetBrainsMonoFontFamily
@@ -73,8 +78,15 @@ fun SudokuScreen(
 ) {
     BackHandler(onBack = onBackToHome)
 
+    val context = LocalContext.current
+    var showTutorialDialog by rememberSaveable { mutableStateOf(false) }
+
     LaunchedEffect(Unit) {
+        AppSettingsStore.init(context)
         viewModel.refreshSharedSettings()
+        if (!AppSettingsStore.hasSeenTutorial(GameDestination.SUDOKU)) {
+            showTutorialDialog = true
+        }
     }
 
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -317,6 +329,10 @@ fun SudokuScreen(
             onToggleMasterHaptics = { viewModel.setHapticsEnabled(it) },
             onToggleOledMode = { viewModel.setOledMode(it) },
             showFlagHapticsSection = false,
+            onOpenTutorial = {
+                viewModel.showSettingsDialog(false)
+                showTutorialDialog = true
+            },
             onDismiss = { viewModel.showSettingsDialog(false) },
             gameOptionsContent = {
                 Column(
@@ -355,6 +371,17 @@ fun SudokuScreen(
             isOledMode = uiState.isOledMode,
             onReset = { viewModel.resetStats(it) },
             onDismiss = { viewModel.showStatsDialog(false) }
+        )
+    }
+
+    if (showTutorialDialog) {
+        GameTutorialDialog(
+            game = GameDestination.SUDOKU,
+            isOledMode = uiState.isOledMode,
+            onDismiss = {
+                AppSettingsStore.markTutorialSeen(context, GameDestination.SUDOKU)
+                showTutorialDialog = false
+            }
         )
     }
 }

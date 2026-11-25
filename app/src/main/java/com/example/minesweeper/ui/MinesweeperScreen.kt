@@ -25,17 +25,22 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.example.common.AppSettingsStore
 import com.example.common.ArcadePillButton
+import com.example.common.GameTutorialDialog
+import com.example.home.GameDestination
 import com.example.minesweeper.model.Difficulty
 import com.example.minesweeper.model.DifficultyType
 import com.example.minesweeper.model.GameStatus
@@ -57,8 +62,15 @@ fun MinesweeperScreen(
         BackHandler(onBack = onBackToHome)
     }
 
+    val context = LocalContext.current
+    var showTutorialDialog by rememberSaveable { mutableStateOf(false) }
+
     LaunchedEffect(Unit) {
+        AppSettingsStore.init(context)
         viewModel.refreshSettingsAndStreak()
+        if (!AppSettingsStore.hasSeenTutorial(GameDestination.MINESWEEPER)) {
+            showTutorialDialog = true
+        }
     }
 
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -183,6 +195,10 @@ fun MinesweeperScreen(
             onSelectHapticStrength = { viewModel.setHapticStrength(it) },
             onTestFlagHaptic = { viewModel.testFlagHaptic() },
             onToggleOledMode = { viewModel.setOledMode(it) },
+            onOpenTutorial = {
+                viewModel.showHapticSettingsDialog(false)
+                showTutorialDialog = true
+            },
             onDismiss = { viewModel.showHapticSettingsDialog(false) },
             gameOptionsContent = {
                 Column(
@@ -247,6 +263,17 @@ fun MinesweeperScreen(
             dailyStreak = uiState.dailyStreak,
             onResetStats = { viewModel.resetStats(it) },
             onDismiss = { viewModel.showStatsDialog(false) }
+        )
+    }
+
+    if (showTutorialDialog) {
+        GameTutorialDialog(
+            game = GameDestination.MINESWEEPER,
+            isOledMode = uiState.isOledMode,
+            onDismiss = {
+                AppSettingsStore.markTutorialSeen(context, GameDestination.MINESWEEPER)
+                showTutorialDialog = false
+            }
         )
     }
 }

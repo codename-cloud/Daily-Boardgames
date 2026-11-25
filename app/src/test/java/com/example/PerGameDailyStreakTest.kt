@@ -4,13 +4,20 @@ import android.content.Context
 import android.content.ContextWrapper
 import android.content.SharedPreferences
 import com.example.common.AppSettingsStore
+import com.example.common.tutorialStepsFor
 import com.example.home.GameDestination
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
+import org.junit.Before
 import org.junit.Test
 
 class PerGameDailyStreakTest {
+
+    @Before
+    fun setUp() {
+        AppSettingsStore.resetForTesting()
+    }
 
     @Test
     fun testEachGameHasIndependentDailyStreak() {
@@ -39,6 +46,45 @@ class PerGameDailyStreakTest {
         assertEquals(1, AppSettingsStore.getDailyStreak(GameDestination.SOLITAIRE).currentStreak)
         assertEquals(0, AppSettingsStore.getDailyStreak(GameDestination.FREECELL).currentStreak)
         assertEquals(0, AppSettingsStore.getDailyStreak(GameDestination.SUDOKU).currentStreak)
+    }
+
+    @Test
+    fun testTutorialSeenStateIsTrackedAndPersistedPerGame() {
+        val fakeContext = InMemoryPrefsContext()
+        AppSettingsStore.init(fakeContext)
+
+        GameDestination.entries.forEach { game ->
+            assertFalse("Tutorial for $game should default to unseen", AppSettingsStore.hasSeenTutorial(game))
+        }
+
+        AppSettingsStore.markTutorialSeen(fakeContext, GameDestination.MINESWEEPER)
+        assertTrue(AppSettingsStore.hasSeenTutorial(GameDestination.MINESWEEPER))
+        assertFalse(AppSettingsStore.hasSeenTutorial(GameDestination.SOLITAIRE))
+        assertFalse(AppSettingsStore.hasSeenTutorial(GameDestination.FREECELL))
+        assertFalse(AppSettingsStore.hasSeenTutorial(GameDestination.SUDOKU))
+
+        AppSettingsStore.markTutorialSeen(fakeContext, GameDestination.SUDOKU)
+        assertTrue(AppSettingsStore.hasSeenTutorial(GameDestination.SUDOKU))
+
+        // Simulate process restart against same backing SharedPreferences
+        AppSettingsStore.resetForTesting()
+        AppSettingsStore.init(fakeContext)
+        assertTrue(AppSettingsStore.hasSeenTutorial(GameDestination.MINESWEEPER))
+        assertTrue(AppSettingsStore.hasSeenTutorial(GameDestination.SUDOKU))
+        assertFalse(AppSettingsStore.hasSeenTutorial(GameDestination.SOLITAIRE))
+        assertFalse(AppSettingsStore.hasSeenTutorial(GameDestination.FREECELL))
+    }
+
+    @Test
+    fun testAllGamesHaveMultiStepTutorials() {
+        GameDestination.entries.forEach { game ->
+            val steps = tutorialStepsFor(game)
+            assertTrue("Expected multi-step tutorial for $game", steps.size >= 3)
+            steps.forEach { step ->
+                assertTrue(step.title.isNotBlank())
+                assertTrue(step.description.isNotBlank())
+            }
+        }
     }
 
     private class InMemoryPrefsContext : ContextWrapper(null) {

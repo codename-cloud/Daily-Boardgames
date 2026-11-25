@@ -16,7 +16,8 @@ data class AppSettings(
     val isSoundEnabled: Boolean = true,
     val isHapticsEnabled: Boolean = true,
     val isFlagHapticsEnabled: Boolean = true,
-    val hapticStrength: HapticStrength = HapticStrength.MEDIUM
+    val hapticStrength: HapticStrength = HapticStrength.MEDIUM,
+    val seenTutorials: Set<GameDestination> = emptySet()
 )
 
 object AppSettingsStore {
@@ -59,15 +60,22 @@ object AppSettingsStore {
         } catch (_: Exception) {
             HapticStrength.MEDIUM
         }
+        val seen = GameDestination.entries.filter { dest ->
+            prefs.getBoolean(tutorialPrefKey(dest), false)
+        }.toSet()
         _settings.value = AppSettings(
             isOledMode = prefs.getBoolean("oled_mode", false),
             isSoundEnabled = prefs.getBoolean("sound_enabled", true),
             isHapticsEnabled = prefs.getBoolean("haptics_enabled", true),
             isFlagHapticsEnabled = prefs.getBoolean("flag_haptics_enabled", true),
-            hapticStrength = strength
+            hapticStrength = strength,
+            seenTutorials = seen
         )
         _dailyStreaks.value = streakManagers.mapValues { (_, manager) -> manager.getStreak() }
     }
+
+    private fun tutorialPrefKey(game: GameDestination): String =
+        "tutorial_seen_${game.name.lowercase()}"
 
     fun setOledMode(context: Context, enabled: Boolean) {
         init(context)
@@ -125,5 +133,21 @@ object AppSettingsStore {
         val res = streakManagers.getValue(game).recordWin()
         _dailyStreaks.update { current -> current + (game to res.streak) }
         return res.isFirstWinToday
+    }
+
+    fun hasSeenTutorial(game: GameDestination): Boolean {
+        return _settings.value.seenTutorials.contains(game)
+    }
+
+    fun markTutorialSeen(context: Context, game: GameDestination) {
+        init(context)
+        prefs.edit().putBoolean(tutorialPrefKey(game), true).apply()
+        _settings.update { it.copy(seenTutorials = it.seenTutorials + game) }
+    }
+
+    internal fun resetForTesting() {
+        initialized = false
+        _settings.value = AppSettings()
+        _dailyStreaks.value = emptyMap()
     }
 }

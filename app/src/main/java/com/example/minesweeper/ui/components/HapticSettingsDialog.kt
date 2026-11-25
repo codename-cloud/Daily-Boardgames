@@ -12,6 +12,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.HelpOutline
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -49,6 +50,7 @@ fun HapticSettingsDialog(
     isSoundEnabled: Boolean? = null,
     onToggleSound: ((Boolean) -> Unit)? = null,
     showFlagHapticsSection: Boolean = true,
+    onOpenTutorial: (() -> Unit)? = null,
     gameOptionsContent: (@Composable () -> Unit)? = null
 ) {
     val dialogContainer = if (isOledMode) Color(0xFF121212) else MaterialTheme.colorScheme.surface
@@ -273,6 +275,28 @@ fun HapticSettingsDialog(
                         shape = RoundedCornerShape(8.dp)
                     ) {
                         Text("Test Flag Vibration (${hapticStrength.label})")
+                    }
+                }
+
+                if (onOpenTutorial != null) {
+                    HorizontalDivider(modifier = Modifier.padding(vertical = 10.dp))
+
+                    OutlinedButton(
+                        onClick = onOpenTutorial,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .testTag("watch_tutorial_button"),
+                        shape = RoundedCornerShape(8.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.HelpOutline,
+                            contentDescription = null,
+                            modifier = Modifier.padding(end = 6.dp)
+                        )
+                        Text(
+                            text = "Watch Tutorial",
+                            fontWeight = FontWeight.SemiBold
+                        )
                     }
                 }
             }

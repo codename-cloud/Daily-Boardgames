@@ -12,11 +12,21 @@ android {
   compileSdk = 36
 
   defaultConfig {
+    val ciVersionCode = (project.findProperty("buildVersionCode") as? String)?.toIntOrNull() ?: 11
+    val ciVersionName = (project.findProperty("buildVersionName") as? String)?.takeIf { it.isNotBlank() } ?: "11.0"
+    val ciRunNumber = (project.findProperty("buildRunNumber") as? String)?.toLongOrNull() ?: 0L
+    val ciCommitSha = (project.findProperty("buildCommitSha") as? String)?.trim()?.replace("\"", "").orEmpty()
+    val ciGithubRepo = (project.findProperty("buildGithubRepo") as? String)?.trim()?.replace("\"", "").orEmpty()
+
     applicationId = "com.aistudio.minesweeper.bvlpmr"
     minSdk = 24
     targetSdk = 36
-    versionCode = 11
-    versionName = "11.0"
+    versionCode = ciVersionCode
+    versionName = ciVersionName
+
+    buildConfigField("long", "CI_RUN_NUMBER", "${ciRunNumber}L")
+    buildConfigField("String", "CI_COMMIT_SHA", "\"$ciCommitSha\"")
+    buildConfigField("String", "DEFAULT_GITHUB_REPO", "\"$ciGithubRepo\"")
 
     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
   }

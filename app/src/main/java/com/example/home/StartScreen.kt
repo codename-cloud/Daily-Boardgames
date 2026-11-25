@@ -31,11 +31,13 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.SystemUpdate
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -56,6 +58,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.common.AppSettingsStore
+import com.example.common.GitHubUpdateDialog
+import com.example.common.GitHubUpdateManager
 import com.example.common.rememberArcadeThemeColors
 import com.example.minesweeper.data.DailyStreak
 import com.example.minesweeper.haptic.HapticManager
@@ -94,12 +98,20 @@ fun StartScreen(
     val context = LocalContext.current
     val settings by AppSettingsStore.settings.collectAsStateWithLifecycle()
     val dailyStreaks by AppSettingsStore.dailyStreaks.collectAsStateWithLifecycle()
+    val updateState by GitHubUpdateManager.uiState.collectAsStateWithLifecycle()
     val colors = rememberArcadeThemeColors(settings.isOledMode)
     val isDark = isSystemInDarkTheme()
 
     var selectedStreakEntry by remember { mutableStateOf<GameMenuEntry?>(null) }
     var showSettingsDialog by remember { mutableStateOf(false) }
+    var showUpdateDialog by remember { mutableStateOf(false) }
     val hapticManager = remember { HapticManager(context) }
+
+    LaunchedEffect(settings.githubRepo) {
+        if (settings.githubRepo.isNotBlank()) {
+            GitHubUpdateManager.autoCheckIfNeeded(settings.githubRepo)
+        }
+    }
 
     val completedTodayCount = games.count { entry ->
         (dailyStreaks[entry.destination] ?: entry.dailyStreak).isWinAwardedToday
@@ -145,17 +157,53 @@ fun StartScreen(
                         )
                     }
 
-                    IconButton(
-                        onClick = { showSettingsDialog = true },
-                        modifier = Modifier
-                            .size(40.dp)
-                            .testTag("home_settings_button")
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
-                        Icon(
-                            imageVector = Icons.Default.Settings,
-                            contentDescription = "Game Settings",
-                            tint = colors.primaryText
-                        )
+                        val availableUpdate = updateState.availableUpdate
+                        if (availableUpdate != null) {
+                            Row(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(16.dp))
+                                    .background(Color(0xFF16A34A))
+                                    .clickable(
+                                        role = Role.Button,
+                                        onClickLabel = "Open GitHub Update",
+                                        onClick = { showUpdateDialog = true }
+                                    )
+                                    .padding(horizontal = 10.dp, vertical = 6.dp)
+                                    .testTag("home_update_available_badge"),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.SystemUpdate,
+                                    contentDescription = "Update available",
+                                    tint = Color.White,
+                                    modifier = Modifier.size(15.dp)
+                                )
+                                Text(
+                                    text = "Update",
+                                    color = Color.White,
+                                    fontSize = 11.5.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                        }
+
+                        IconButton(
+                            onClick = { showSettingsDialog = true },
+                            modifier = Modifier
+                                .size(48.dp)
+                                .testTag("home_settings_button")
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Settings,
+                                contentDescription = "Game Settings",
+                                tint = colors.primaryText
+                            )
+                        }
                     }
                 }
             }
@@ -253,7 +301,18 @@ fun StartScreen(
             onTestFlagHaptic = { hapticManager.performFlagHaptic(settings.hapticStrength) },
             onToggleOledMode = { AppSettingsStore.setOledMode(context, it) },
             showFlagHapticsSection = false,
+            onOpenAppUpdates = {
+                showSettingsDialog = false
+                showUpdateDialog = true
+            },
             onDismiss = { showSettingsDialog = false }
+        )
+    }
+
+    if (showUpdateDialog) {
+        GitHubUpdateDialog(
+            isOledMode = settings.isOledMode,
+            onDismiss = { showUpdateDialog = false }
         )
     }
 }

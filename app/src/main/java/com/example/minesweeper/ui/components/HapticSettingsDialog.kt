@@ -14,6 +14,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.HelpOutline
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.SystemUpdate
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -26,6 +27,10 @@ import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -33,6 +38,10 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.example.BuildConfig
+import com.example.common.GitHubUpdateDialog
+import com.example.common.GitHubUpdateManager
 import com.example.minesweeper.haptic.HapticStrength
 
 @Composable
@@ -51,11 +60,15 @@ fun HapticSettingsDialog(
     onToggleSound: ((Boolean) -> Unit)? = null,
     showFlagHapticsSection: Boolean = true,
     onOpenTutorial: (() -> Unit)? = null,
+    showAppUpdatesOption: Boolean = true,
+    onOpenAppUpdates: (() -> Unit)? = null,
     gameOptionsContent: (@Composable () -> Unit)? = null
 ) {
     val dialogContainer = if (isOledMode) Color(0xFF121212) else MaterialTheme.colorScheme.surface
     val titleColor = if (isOledMode) Color.White else MaterialTheme.colorScheme.onSurface
     val subTextColor = if (isOledMode) Color(0xFF94A3B8) else MaterialTheme.colorScheme.onSurfaceVariant
+    var showInternalUpdateDialog by remember { mutableStateOf(false) }
+    val updateState by GitHubUpdateManager.uiState.collectAsStateWithLifecycle()
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -299,6 +312,40 @@ fun HapticSettingsDialog(
                         )
                     }
                 }
+
+                if (showAppUpdatesOption) {
+                    HorizontalDivider(modifier = Modifier.padding(vertical = 10.dp))
+
+                    val hasUpdate = updateState.availableUpdate != null
+                    OutlinedButton(
+                        onClick = {
+                            if (onOpenAppUpdates != null) {
+                                onOpenAppUpdates()
+                            } else {
+                                showInternalUpdateDialog = true
+                            }
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .testTag("open_app_updates_button"),
+                        shape = RoundedCornerShape(8.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.SystemUpdate,
+                            contentDescription = null,
+                            tint = if (hasUpdate) Color(0xFF22C55E) else MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.padding(end = 6.dp)
+                        )
+                        Text(
+                            text = if (hasUpdate) {
+                                "Update Available (${updateState.availableUpdate?.tagOrVersion})"
+                            } else {
+                                "GitHub Updates (v${BuildConfig.VERSION_NAME})"
+                            },
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
+                }
             }
         },
         confirmButton = {
@@ -310,4 +357,11 @@ fun HapticSettingsDialog(
             }
         }
     )
+
+    if (showInternalUpdateDialog) {
+        GitHubUpdateDialog(
+            isOledMode = isOledMode,
+            onDismiss = { showInternalUpdateDialog = false }
+        )
+    }
 }

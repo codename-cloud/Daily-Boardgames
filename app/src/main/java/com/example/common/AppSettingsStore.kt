@@ -2,6 +2,7 @@ package com.example.common
 
 import android.content.Context
 import android.content.SharedPreferences
+import com.example.BuildConfig
 import com.example.home.GameDestination
 import com.example.minesweeper.data.DailyStreak
 import com.example.minesweeper.data.DailyStreakManager
@@ -17,7 +18,8 @@ data class AppSettings(
     val isHapticsEnabled: Boolean = true,
     val isFlagHapticsEnabled: Boolean = true,
     val hapticStrength: HapticStrength = HapticStrength.MEDIUM,
-    val seenTutorials: Set<GameDestination> = emptySet()
+    val seenTutorials: Set<GameDestination> = emptySet(),
+    val githubRepo: String = ""
 )
 
 object AppSettingsStore {
@@ -63,19 +65,33 @@ object AppSettingsStore {
         val seen = GameDestination.entries.filter { dest ->
             prefs.getBoolean(tutorialPrefKey(dest), false)
         }.toSet()
+        val storedRepo = prefs.getString("github_repo", null)
+        val effectiveRepo = when {
+            storedRepo != null -> storedRepo
+            else -> normalizeGithubRepo(BuildConfig.DEFAULT_GITHUB_REPO).orEmpty()
+        }
         _settings.value = AppSettings(
             isOledMode = prefs.getBoolean("oled_mode", false),
             isSoundEnabled = prefs.getBoolean("sound_enabled", true),
             isHapticsEnabled = prefs.getBoolean("haptics_enabled", true),
             isFlagHapticsEnabled = prefs.getBoolean("flag_haptics_enabled", true),
             hapticStrength = strength,
-            seenTutorials = seen
+            seenTutorials = seen,
+            githubRepo = effectiveRepo
         )
         _dailyStreaks.value = streakManagers.mapValues { (_, manager) -> manager.getStreak() }
     }
 
     private fun tutorialPrefKey(game: GameDestination): String =
         "tutorial_seen_${game.name.lowercase()}"
+
+    fun setGithubRepo(context: Context, repoInput: String): String {
+        init(context)
+        val normalized = normalizeGithubRepo(repoInput).orEmpty()
+        prefs.edit().putString("github_repo", normalized).apply()
+        _settings.update { it.copy(githubRepo = normalized) }
+        return normalized
+    }
 
     fun setOledMode(context: Context, enabled: Boolean) {
         init(context)

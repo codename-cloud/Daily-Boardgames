@@ -12,7 +12,7 @@ concurrency:
   cancel-in-progress: true
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   build:
@@ -84,7 +84,14 @@ jobs:
 
       - name: Build Installable APK
         run: |
-          ./gradlew assembleDebug -Pandroid.injected.testOnly=false --no-daemon --stacktrace
+          ./gradlew assembleDebug \
+            -Pandroid.injected.testOnly=false \
+            -PbuildVersionCode=$((11 + ${{ github.run_number }})) \
+            -PbuildVersionName="11.${{ github.run_number }}" \
+            -PbuildRunNumber="${{ github.run_number }}" \
+            -PbuildCommitSha="${{ github.sha }}" \
+            -PbuildGithubRepo="${{ github.repository }}" \
+            --no-daemon --stacktrace
           # Create clean APK filename without the -debug tag
           mkdir -p app/build/outputs/apk/release-artifact
           cp app/build/outputs/apk/debug/*.apk app/build/outputs/apk/release-artifact/daily-boardgames.apk
@@ -97,3 +104,20 @@ jobs:
           retention-days: 30
           if-no-files-found: error
           overwrite: true
+
+      - name: Publish GitHub Release APK
+        if: github.event_name != 'pull_request'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG="build-${{ github.run_number }}"
+          TITLE="Daily Boardgames v11.${{ github.run_number }} (Build #${{ github.run_number }})"
+          NOTES="Automated APK build from workflow run #${{ github.run_number }} (commit ${GITHUB_SHA::7})."
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" app/build/outputs/apk/release-artifact/daily-boardgames.apk --clobber
+          else
+            gh release create "$TAG" app/build/outputs/apk/release-artifact/daily-boardgames.apk \
+              --title "$TITLE" \
+              --notes "$NOTES" \
+              --latest
+          fi

@@ -5,7 +5,6 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -68,6 +67,7 @@ import com.example.minesweeper.ui.components.DailyStreakDialog
 import com.example.minesweeper.ui.components.DigitalCounter
 import com.example.minesweeper.ui.components.HapticSettingsDialog
 import com.example.ui.theme.JetBrainsMonoFontFamily
+import com.example.ui.theme.LocalIsDarkTheme
 import com.example.ui.theme.OutfitFontFamily
 
 enum class GameDestination {
@@ -100,7 +100,7 @@ fun StartScreen(
     val dailyStreaks by AppSettingsStore.dailyStreaks.collectAsStateWithLifecycle()
     val updateState by GitHubUpdateManager.uiState.collectAsStateWithLifecycle()
     val colors = rememberArcadeThemeColors(settings.isOledMode)
-    val isDark = isSystemInDarkTheme()
+    val isDark = LocalIsDarkTheme.current
 
     var selectedStreakEntry by remember { mutableStateOf<GameMenuEntry?>(null) }
     var showSettingsDialog by remember { mutableStateOf(false) }

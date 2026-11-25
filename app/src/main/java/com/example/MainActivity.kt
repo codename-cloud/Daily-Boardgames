@@ -2,11 +2,14 @@ package com.example
 
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -39,7 +42,32 @@ class MainActivity : ComponentActivity() {
         AppSettingsStore.init(applicationContext)
         enableEdgeToEdge()
         setContent {
-            MyApplicationTheme {
+            val appSettings by AppSettingsStore.settings.collectAsStateWithLifecycle()
+            val systemDark = isSystemInDarkTheme()
+            val effectiveIsDark = appSettings.resolveIsDark(systemDark)
+
+            LaunchedEffect(effectiveIsDark) {
+                enableEdgeToEdge(
+                    statusBarStyle = if (effectiveIsDark) {
+                        SystemBarStyle.dark(android.graphics.Color.TRANSPARENT)
+                    } else {
+                        SystemBarStyle.light(
+                            android.graphics.Color.TRANSPARENT,
+                            android.graphics.Color.TRANSPARENT
+                        )
+                    },
+                    navigationBarStyle = if (effectiveIsDark) {
+                        SystemBarStyle.dark(android.graphics.Color.TRANSPARENT)
+                    } else {
+                        SystemBarStyle.light(
+                            android.graphics.Color.TRANSPARENT,
+                            android.graphics.Color.TRANSPARENT
+                        )
+                    }
+                )
+            }
+
+            MyApplicationTheme(darkTheme = effectiveIsDark) {
                 var activeGame by rememberSaveable { mutableStateOf<GameDestination?>(null) }
 
                 val mineState by minesweeperViewModel.uiState.collectAsStateWithLifecycle()

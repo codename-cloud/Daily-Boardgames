@@ -4,7 +4,6 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -42,6 +41,7 @@ import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.ui.theme.CardSelectedGold
+import com.example.ui.theme.LocalIsDarkTheme
 
 @Suppress("UNUSED_PARAMETER")
 @Composable
@@ -244,21 +244,22 @@ fun EmptyCardSlot(
     cornerRadius: Dp = 5.dp,
     onClick: (() -> Unit)? = null
 ) {
-    val isDark = isSystemInDarkTheme()
+    val isDark = LocalIsDarkTheme.current
+    val effectiveOled = isDark && isOledMode
     val shape = RoundedCornerShape(cornerRadius)
     val slotBg = when {
-        isOledMode -> Color.Black
+        effectiveOled -> Color.Black
         isDark -> Color(0xFF1E293B).copy(alpha = 0.7f)
         else -> Color(0xFFCBD5E1).copy(alpha = 0.65f)
     }
     val slotBorder = when {
         isHighlighted -> CardSelectedGold
-        isOledMode -> Color(0xFF334155)
+        effectiveOled -> Color(0xFF334155)
         isDark -> Color(0xFF334155)
         else -> Color(0xFF94A3B8)
     }
     val labelTint = tint ?: when {
-        isOledMode -> Color(0xFF64748B)
+        effectiveOled -> Color(0xFF64748B)
         isDark -> Color(0xFF94A3B8)
         else -> Color(0xFF475569)
     }

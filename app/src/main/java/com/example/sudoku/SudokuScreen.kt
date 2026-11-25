@@ -4,7 +4,6 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -69,6 +68,7 @@ import com.example.home.GameDestination
 import com.example.minesweeper.ui.components.DailyStreakDialog
 import com.example.minesweeper.ui.components.HapticSettingsDialog
 import com.example.ui.theme.JetBrainsMonoFontFamily
+import com.example.ui.theme.LocalIsDarkTheme
 
 @Composable
 fun SudokuScreen(
@@ -91,7 +91,7 @@ fun SudokuScreen(
 
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val colors = rememberArcadeThemeColors(uiState.isOledMode)
-    val isDark = isSystemInDarkTheme()
+    val isDark = LocalIsDarkTheme.current
 
     Scaffold(
         modifier = modifier.fillMaxSize(),

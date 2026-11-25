@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.ContextWrapper
 import android.content.SharedPreferences
 import com.example.common.AppSettingsStore
+import com.example.common.ThemeMode
 import com.example.common.tutorialStepsFor
 import com.example.home.GameDestination
 import org.junit.Assert.assertEquals
@@ -85,6 +86,42 @@ class PerGameDailyStreakTest {
                 assertTrue(step.description.isNotBlank())
             }
         }
+    }
+
+    @Test
+    fun testThemeModeDefaultsToSystemAndBlocksOledInLightMode() {
+        val fakeContext = InMemoryPrefsContext()
+        AppSettingsStore.init(fakeContext)
+
+        // Default follows device system theme
+        assertEquals(ThemeMode.SYSTEM, AppSettingsStore.settings.value.themeMode)
+        assertTrue(AppSettingsStore.settings.value.resolveIsDark(systemDark = true))
+        assertFalse(AppSettingsStore.settings.value.resolveIsDark(systemDark = false))
+
+        // Switch to Dark Mode and enable OLED
+        AppSettingsStore.setDarkMode(fakeContext, true)
+        assertEquals(ThemeMode.DARK, AppSettingsStore.settings.value.themeMode)
+        assertTrue(AppSettingsStore.settings.value.resolveIsDark(systemDark = false))
+
+        AppSettingsStore.setOledMode(fakeContext, true)
+        assertTrue(AppSettingsStore.settings.value.isOledMode)
+        assertTrue(AppSettingsStore.settings.value.resolveIsOled(systemDark = false))
+
+        // Switching to Light Mode disables OLED and blocks enabling it while Light Mode is active
+        AppSettingsStore.setDarkMode(fakeContext, false)
+        assertEquals(ThemeMode.LIGHT, AppSettingsStore.settings.value.themeMode)
+        assertFalse(AppSettingsStore.settings.value.resolveIsDark(systemDark = true))
+        assertFalse(AppSettingsStore.settings.value.isOledMode)
+        assertFalse(AppSettingsStore.settings.value.resolveIsOled(systemDark = true))
+
+        AppSettingsStore.setOledMode(fakeContext, true)
+        assertFalse(AppSettingsStore.settings.value.isOledMode)
+
+        // Persists across process restart
+        AppSettingsStore.resetForTesting()
+        AppSettingsStore.init(fakeContext)
+        assertEquals(ThemeMode.LIGHT, AppSettingsStore.settings.value.themeMode)
+        assertFalse(AppSettingsStore.settings.value.isOledMode)
     }
 
     private class InMemoryPrefsContext : ContextWrapper(null) {

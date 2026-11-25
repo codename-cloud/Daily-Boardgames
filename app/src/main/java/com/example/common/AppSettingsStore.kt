@@ -12,7 +12,14 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 
+enum class ThemeMode {
+    SYSTEM,
+    LIGHT,
+    DARK
+}
+
 data class AppSettings(
+    val themeMode: ThemeMode = ThemeMode.SYSTEM,
     val isOledMode: Boolean = false,
     val isSoundEnabled: Boolean = true,
     val isHapticsEnabled: Boolean = true,
@@ -20,7 +27,15 @@ data class AppSettings(
     val hapticStrength: HapticStrength = HapticStrength.MEDIUM,
     val seenTutorials: Set<GameDestination> = emptySet(),
     val githubRepo: String = ""
-)
+) {
+    fun resolveIsDark(systemDark: Boolean): Boolean = when (themeMode) {
+        ThemeMode.SYSTEM -> systemDark
+        ThemeMode.LIGHT -> false
+        ThemeMode.DARK -> true
+    }
+
+    fun resolveIsOled(systemDark: Boolean): Boolean = resolveIsDark(systemDark) && isOledMode
+}
 
 object AppSettingsStore {
     private const val PREFS_NAME = "minesweeper_settings_prefs"
@@ -55,6 +70,13 @@ object AppSettingsStore {
 
     fun reloadFromPrefs() {
         if (!::prefs.isInitialized) return
+        val themeMode = try {
+            ThemeMode.valueOf(
+                prefs.getString("theme_mode", ThemeMode.SYSTEM.name) ?: ThemeMode.SYSTEM.name
+            )
+        } catch (_: Exception) {
+            ThemeMode.SYSTEM
+        }
         val strength = try {
             HapticStrength.valueOf(
                 prefs.getString("haptic_strength", HapticStrength.MEDIUM.name) ?: HapticStrength.MEDIUM.name
@@ -70,8 +92,10 @@ object AppSettingsStore {
             storedRepo != null -> storedRepo
             else -> normalizeGithubRepo(BuildConfig.DEFAULT_GITHUB_REPO).orEmpty()
         }
+        val storedOled = prefs.getBoolean("oled_mode", false)
         _settings.value = AppSettings(
-            isOledMode = prefs.getBoolean("oled_mode", false),
+            themeMode = themeMode,
+            isOledMode = if (themeMode == ThemeMode.LIGHT) false else storedOled,
             isSoundEnabled = prefs.getBoolean("sound_enabled", true),
             isHapticsEnabled = prefs.getBoolean("haptics_enabled", true),
             isFlagHapticsEnabled = prefs.getBoolean("flag_haptics_enabled", true),
@@ -93,8 +117,26 @@ object AppSettingsStore {
         return normalized
     }
 
+    fun setDarkMode(context: Context, enabled: Boolean) {
+        init(context)
+        val mode = if (enabled) ThemeMode.DARK else ThemeMode.LIGHT
+        if (!enabled) {
+            prefs.edit()
+                .putString("theme_mode", mode.name)
+                .putBoolean("oled_mode", false)
+                .apply()
+            _settings.update { it.copy(themeMode = mode, isOledMode = false) }
+        } else {
+            prefs.edit().putString("theme_mode", mode.name).apply()
+            _settings.update { it.copy(themeMode = mode) }
+        }
+    }
+
     fun setOledMode(context: Context, enabled: Boolean) {
         init(context)
+        if (enabled && _settings.value.themeMode == ThemeMode.LIGHT) {
+            return
+        }
         prefs.edit().putBoolean("oled_mode", enabled).apply()
         _settings.update { it.copy(isOledMode = enabled) }
     }

@@ -4,7 +4,6 @@ import android.content.res.Configuration
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -39,6 +38,7 @@ import com.example.minesweeper.model.Difficulty
 import com.example.minesweeper.model.DifficultyType
 import com.example.minesweeper.model.GameStatus
 import com.example.minesweeper.model.InteractionMode
+import com.example.ui.theme.LocalIsDarkTheme
 
 @Composable
 fun GameHUD(
@@ -62,9 +62,10 @@ fun GameHUD(
     onBackToHome: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
-    val isDark = isSystemInDarkTheme()
+    val isDark = LocalIsDarkTheme.current
+    val effectiveOled = isDark && isOledMode
     val hudBackground = when {
-        isOledMode -> Color.Black
+        effectiveOled -> Color.Black
         isDark -> Color(0xFF1E293B)
         else -> Color(0xFFF1F5F9)
     }
@@ -356,7 +357,7 @@ private fun DifficultyPill(
     onClick: () -> Unit,
     testTag: String
 ) {
-    val isDark = isSystemInDarkTheme()
+    val isDark = LocalIsDarkTheme.current
     val activeBg = if (isDark) Color(0xFF2563EB) else Color(0xFF1D4ED8)
     val inactiveBg = if (isDark) Color(0xFF334155) else Color(0xFFE2E8F0)
     val activeText = Color.White
@@ -391,7 +392,7 @@ private fun ModeToggleButton(
     isOledMode: Boolean = false,
     onToggle: () -> Unit
 ) {
-    val isDark = isSystemInDarkTheme()
+    val isDark = LocalIsDarkTheme.current
     val useDarkPalette = isDark || isOledMode
     val isDig = currentMode == InteractionMode.DIG
 

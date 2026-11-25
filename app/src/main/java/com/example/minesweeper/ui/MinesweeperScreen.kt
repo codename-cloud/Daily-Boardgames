@@ -3,7 +3,6 @@ package com.example.minesweeper.ui
 import android.content.res.Configuration
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -51,6 +50,7 @@ import com.example.minesweeper.ui.components.HapticSettingsDialog
 import com.example.minesweeper.ui.components.MinesweeperBoard
 import com.example.minesweeper.ui.components.StatsDialog
 import com.example.minesweeper.viewmodel.MinesweeperViewModel
+import com.example.ui.theme.LocalIsDarkTheme
 
 @Composable
 fun MinesweeperScreen(
@@ -74,7 +74,8 @@ fun MinesweeperScreen(
     }
 
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    val isDark = isSystemInDarkTheme()
+    val isDark = LocalIsDarkTheme.current
+    val effectiveOled = isDark && uiState.isOledMode
 
     val configuration = LocalConfiguration.current
     val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
@@ -96,7 +97,7 @@ fun MinesweeperScreen(
 
     // Outer screen background: Pure #000000 in OLED mode, slate in dark mode, light slate in light mode
     val screenBackgroundColor = when {
-        uiState.isOledMode -> Color.Black
+        effectiveOled -> Color.Black
         isDark -> Color(0xFF0F172A)
         else -> Color(0xFFE2E8F0)
     }

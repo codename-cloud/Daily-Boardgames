@@ -4,7 +4,6 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.combinedClickable
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
@@ -22,6 +21,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.minesweeper.model.Cell
+import com.example.ui.theme.LocalIsDarkTheme
 
 @Composable
 fun MinesweeperBoard(
@@ -36,7 +36,8 @@ fun MinesweeperBoard(
     val rows = board.size
     val cols = board[0].size
 
-    val isDark = isSystemInDarkTheme()
+    val isDark = LocalIsDarkTheme.current
+    val effectiveOled = isDark && isOledMode
     // Grid border color matching both perimeter and inner cell borders
     val gridBorderColor = if (isDark) Color(0xFF1E293B) else Color(0xFF94A3B8)
 
@@ -55,7 +56,7 @@ fun MinesweeperBoard(
         Column(
             modifier = Modifier
                 .border(0.5.dp, gridBorderColor)
-                .background(if (isOledMode) Color.Black else if (isDark) Color(0xFF0F172A) else Color(0xFF94A3B8))
+                .background(if (effectiveOled) Color.Black else if (isDark) Color(0xFF0F172A) else Color(0xFF94A3B8))
         ) {
             for (r in 0 until rows) {
                 Row {
@@ -86,12 +87,13 @@ fun CellView(
     onClick: () -> Unit,
     onLongClick: () -> Unit
 ) {
-    val isDark = isSystemInDarkTheme()
+    val isDark = LocalIsDarkTheme.current
+    val effectiveOled = isDark && isOledMode
 
     // Base background colors: In OLED mode, revealed cells are pure black (#000000)
     val backgroundColor = when {
         cell.isExploded -> Color(0xFFEF4444) // Bright red for exploded mine
-        cell.isRevealed -> if (isOledMode) Color.Black else if (isDark) Color(0xFF1E293B) else Color(0xFFE2E8F0)
+        cell.isRevealed -> if (effectiveOled) Color.Black else if (isDark) Color(0xFF1E293B) else Color(0xFFE2E8F0)
         else -> if (isDark) Color(0xFF334155) else Color(0xFFCBD5E1)
     }
 

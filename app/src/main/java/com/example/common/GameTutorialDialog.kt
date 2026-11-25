@@ -2,7 +2,6 @@ package com.example.common
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -47,6 +46,7 @@ import com.example.cards.Rank
 import com.example.cards.Suit
 import com.example.home.GameDestination
 import com.example.ui.theme.JetBrainsMonoFontFamily
+import com.example.ui.theme.LocalIsDarkTheme
 import com.example.ui.theme.OutfitFontFamily
 
 data class TutorialStep(
@@ -192,6 +192,7 @@ fun GameTutorialDialog(
     var currentStepIndex by remember(game) { mutableIntStateOf(0) }
     val step = steps[currentStepIndex]
     val colors = rememberArcadeThemeColors(isOledMode)
+    val effectiveOled = LocalIsDarkTheme.current && isOledMode
     val accent = gameAccentFor(game)
     val isLastStep = currentStepIndex == steps.lastIndex
 
@@ -267,7 +268,7 @@ fun GameTutorialDialog(
                         .fillMaxWidth()
                         .clip(RoundedCornerShape(12.dp))
                         .background(
-                            if (isOledMode) Color(0xFF07090D) else colors.screenBackground
+                            if (effectiveOled) Color(0xFF07090D) else colors.screenBackground
                         )
                         .border(1.dp, colors.cardBorder, RoundedCornerShape(12.dp))
                         .padding(horizontal = 12.dp, vertical = 14.dp),
@@ -275,7 +276,7 @@ fun GameTutorialDialog(
                 ) {
                     TutorialIllustration(
                         visualType = step.visualType,
-                        isOledMode = isOledMode,
+                        isOledMode = effectiveOled,
                         accent = accent
                     )
                 }
@@ -367,7 +368,7 @@ private fun TutorialIllustration(
     isOledMode: Boolean,
     accent: Color
 ) {
-    val isDark = isSystemInDarkTheme()
+    val isDark = LocalIsDarkTheme.current
     when (visualType) {
         TutorialVisualType.MINE_UNCOVER -> MiniMinesGrid(
             cells = listOf(

@@ -4,7 +4,6 @@ import android.content.res.Configuration
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -45,6 +44,7 @@ import com.example.minesweeper.model.GameStatus
 import com.example.minesweeper.ui.components.DailyStreakBadge
 import com.example.minesweeper.ui.components.DigitalCounter
 import com.example.minesweeper.ui.components.SmileyButton
+import com.example.ui.theme.LocalIsDarkTheme
 
 data class ArcadeThemeColors(
     val screenBackground: Color,
@@ -61,39 +61,40 @@ data class ArcadeThemeColors(
 
 @Composable
 fun rememberArcadeThemeColors(isOledMode: Boolean): ArcadeThemeColors {
-    val isDark = isSystemInDarkTheme()
+    val isDark = LocalIsDarkTheme.current
+    val effectiveOled = isDark && isOledMode
     return ArcadeThemeColors(
         screenBackground = when {
-            isOledMode -> Color.Black
+            effectiveOled -> Color.Black
             isDark -> Color(0xFF0F172A)
             else -> Color(0xFFE2E8F0)
         },
         hudBackground = when {
-            isOledMode -> Color.Black
+            effectiveOled -> Color.Black
             isDark -> Color(0xFF1E293B)
             else -> Color(0xFFF1F5F9)
         },
         cardBackground = when {
-            isOledMode -> Color(0xFF0A0A0A)
+            effectiveOled -> Color(0xFF0A0A0A)
             isDark -> Color(0xFF1E293B)
             else -> Color.White
         },
         cardBorder = when {
-            isOledMode -> Color(0xFF262626)
+            effectiveOled -> Color(0xFF262626)
             isDark -> Color(0xFF334155)
             else -> Color(0xFFCBD5E1)
         },
-        primaryText = if (isDark || isOledMode) Color.White else Color(0xFF0F172A),
-        secondaryText = if (isOledMode) Color(0xFF94A3B8) else if (isDark) Color(0xFFCBD5E1) else Color(0xFF475569),
+        primaryText = if (isDark || effectiveOled) Color.White else Color(0xFF0F172A),
+        secondaryText = if (effectiveOled) Color(0xFF94A3B8) else if (isDark) Color(0xFFCBD5E1) else Color(0xFF475569),
         pillInactiveBg = when {
-            isOledMode -> Color(0xFF171717)
+            effectiveOled -> Color(0xFF171717)
             isDark -> Color(0xFF334155)
             else -> Color(0xFFE2E8F0)
         },
-        pillInactiveText = if (isDark || isOledMode) Color(0xFFCBD5E1) else Color(0xFF334155),
-        pillActiveBg = if (isDark || isOledMode) Color(0xFF2563EB) else Color(0xFF1D4ED8),
+        pillInactiveText = if (isDark || effectiveOled) Color(0xFFCBD5E1) else Color(0xFF334155),
+        pillActiveBg = if (isDark || effectiveOled) Color(0xFF2563EB) else Color(0xFF1D4ED8),
         dialogSurface = when {
-            isOledMode -> Color(0xFF121212)
+            effectiveOled -> Color(0xFF121212)
             isDark -> Color(0xFF1E293B)
             else -> Color.White
         }
@@ -124,7 +125,7 @@ fun ArcadeGameHUD(
     subRowContent: (@Composable () -> Unit)? = null
 ) {
     val colors = rememberArcadeThemeColors(isOledMode)
-    val isDark = isSystemInDarkTheme()
+    val isDark = LocalIsDarkTheme.current
     val configuration = LocalConfiguration.current
     val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
 

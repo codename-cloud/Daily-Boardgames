@@ -34,15 +34,18 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.BuildConfig
+import com.example.common.AppSettingsStore
 import com.example.common.GitHubUpdateDialog
 import com.example.common.GitHubUpdateManager
 import com.example.minesweeper.haptic.HapticStrength
+import com.example.ui.theme.LocalIsDarkTheme
 
 @Composable
 fun HapticSettingsDialog(
@@ -64,9 +67,12 @@ fun HapticSettingsDialog(
     onOpenAppUpdates: (() -> Unit)? = null,
     gameOptionsContent: (@Composable () -> Unit)? = null
 ) {
-    val dialogContainer = if (isOledMode) Color(0xFF121212) else MaterialTheme.colorScheme.surface
-    val titleColor = if (isOledMode) Color.White else MaterialTheme.colorScheme.onSurface
-    val subTextColor = if (isOledMode) Color(0xFF94A3B8) else MaterialTheme.colorScheme.onSurfaceVariant
+    val context = LocalContext.current
+    val isDarkMode = LocalIsDarkTheme.current
+    val effectiveOledMode = isDarkMode && isOledMode
+    val dialogContainer = if (effectiveOledMode) Color(0xFF121212) else MaterialTheme.colorScheme.surface
+    val titleColor = if (effectiveOledMode) Color.White else MaterialTheme.colorScheme.onSurface
+    val subTextColor = if (effectiveOledMode) Color(0xFF94A3B8) else MaterialTheme.colorScheme.onSurfaceVariant
     var showInternalUpdateDialog by remember { mutableStateOf(false) }
     val updateState by GitHubUpdateManager.uiState.collectAsStateWithLifecycle()
 
@@ -103,7 +109,41 @@ fun HapticSettingsDialog(
                     HorizontalDivider(modifier = Modifier.padding(vertical = 10.dp))
                 }
 
-                // Theme Section: OLED Pure Black Mode
+                // Theme Section: Dark Mode + OLED Pure Black Mode
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 4.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f).padding(end = 8.dp)) {
+                        Text(
+                            text = "Dark Mode",
+                            fontWeight = FontWeight.SemiBold,
+                            fontSize = 15.sp,
+                            color = titleColor
+                        )
+                        Text(
+                            text = if (isDarkMode) "Dark slate theme active" else "Light theme active",
+                            fontSize = 12.sp,
+                            color = subTextColor
+                        )
+                    }
+                    Switch(
+                        checked = isDarkMode,
+                        onCheckedChange = { enabled ->
+                            AppSettingsStore.setDarkMode(context, enabled)
+                            if (!enabled && isOledMode) {
+                                onToggleOledMode(false)
+                            }
+                        },
+                        modifier = Modifier.testTag("dark_mode_switch")
+                    )
+                }
+
+                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -116,17 +156,26 @@ fun HapticSettingsDialog(
                             text = "OLED Pure Black Mode",
                             fontWeight = FontWeight.SemiBold,
                             fontSize = 15.sp,
-                            color = titleColor
+                            color = if (isDarkMode) titleColor else titleColor.copy(alpha = 0.4f)
                         )
                         Text(
-                            text = "Pure #000000 theme for OLED screens",
+                            text = if (isDarkMode) {
+                                "Pure #000000 theme for OLED screens"
+                            } else {
+                                "Enable Dark Mode to use OLED Pure Black"
+                            },
                             fontSize = 12.sp,
-                            color = subTextColor
+                            color = if (isDarkMode) subTextColor else subTextColor.copy(alpha = 0.35f)
                         )
                     }
                     Switch(
-                        checked = isOledMode,
-                        onCheckedChange = onToggleOledMode,
+                        checked = effectiveOledMode,
+                        onCheckedChange = { enabled ->
+                            if (isDarkMode) {
+                                onToggleOledMode(enabled)
+                            }
+                        },
+                        enabled = isDarkMode,
                         modifier = Modifier.testTag("oled_mode_switch")
                     )
                 }
@@ -238,7 +287,7 @@ fun HapticSettingsDialog(
 
                     Card(
                         colors = CardDefaults.cardColors(
-                            containerColor = if (isOledMode) Color(0xFF1E1E1E) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                            containerColor = if (effectiveOledMode) Color(0xFF1E1E1E) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
                         ),
                         shape = RoundedCornerShape(8.dp),
                         modifier = Modifier.fillMaxWidth()
@@ -360,7 +409,7 @@ fun HapticSettingsDialog(
 
     if (showInternalUpdateDialog) {
         GitHubUpdateDialog(
-            isOledMode = isOledMode,
+            isOledMode = effectiveOledMode,
             onDismiss = { showInternalUpdateDialog = false }
         )
     }

@@ -22,6 +22,8 @@ jobs:
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 20
 
       - name: Set up JDK 21
         uses: actions/setup-java@v4
@@ -109,15 +111,84 @@ jobs:
         if: github.event_name != 'pull_request'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RUN_NUMBER: ${{ github.run_number }}
+          COMMIT_SHA: ${{ github.sha }}
+          HEAD_COMMIT_MSG: ${{ github.event.head_commit.message }}
         run: |
-          TAG="build-${{ github.run_number }}"
-          TITLE="Daily Boardgames v11.${{ github.run_number }} (Build #${{ github.run_number }})"
-          NOTES="Automated APK build from workflow run #${{ github.run_number }} (commit ${GITHUB_SHA::7})."
+          TAG="build-${RUN_NUMBER}"
+          TITLE="Daily Boardgames v11.${RUN_NUMBER} (Build #${RUN_NUMBER})"
+
+          PREV_TAG=$(gh release list --limit 1 --json tagName --jq '.[0].tagName // ""' 2>/dev/null || echo "")
+          export PREV_TAG
+          python3 - << 'PY' > release_notes.md
+          import os, re, subprocess
+
+          run_number = os.environ.get("RUN_NUMBER", "")
+          sha = os.environ.get("COMMIT_SHA", "")[:7]
+          prev_tag = os.environ.get("PREV_TAG", "").strip()
+          head_msg = os.environ.get("HEAD_COMMIT_MSG", "").strip()
+
+          def git_messages():
+              if prev_tag and subprocess.run(["git", "rev-parse", "--verify", "--quiet", f"refs/tags/{prev_tag}"], capture_output=True).returncode == 0:
+                  out = subprocess.check_output(["git", "log", f"{prev_tag}..HEAD", "--pretty=format:%B---COMMIT_END---"], text=True)
+                  chunks = [c.strip() for c in out.split("---COMMIT_END---") if c.strip()]
+                  if chunks:
+                      return chunks[:10]
+              out = subprocess.check_output(["git", "log", "-1", "--pretty=format:%B"], text=True).strip()
+              if out:
+                  return [out]
+              return [head_msg] if head_msg else []
+
+          def clean_line(line):
+              line = re.sub(r'^\s*[-*•]\s*', '', line).strip()
+              if not line:
+                  return None
+              low = line.lower()
+              if low.startswith(("co-authored-by:", "signed-off-by:", "change-id:", "merge pull request ", "merge branch ")):
+                  return None
+              m = re.match(r'^([a-zA-Z]+)(?:\([^)]+\))?:\s*(.+)$', line)
+              if m:
+                  kind, rest = m.group(1).lower(), m.group(2).strip()
+                  rest = rest[:1].upper() + rest[1:] if rest else rest
+                  prefix_map = {
+                      "feat": "New: ",
+                      "feature": "New: ",
+                      "fix": "Fixed: ",
+                      "bugfix": "Fixed: ",
+                      "perf": "Improved: ",
+                      "refactor": "Improved: ",
+                      "style": "Improved: ",
+                      "ui": "Improved: ",
+                  }
+                  return f"{prefix_map.get(kind, '')}{rest}"
+              return line[:1].upper() + line[1:]
+
+          bullets = []
+          seen = set()
+          for msg in git_messages():
+              for raw in msg.splitlines():
+                  cleaned = clean_line(raw)
+                  if cleaned and cleaned.lower() not in seen:
+                      seen.add(cleaned.lower())
+                      bullets.append(cleaned)
+
+          if not bullets:
+              bullets.append(f"Automated APK build from workflow run #{run_number}.")
+
+          print(f"### What's New in Build #{run_number}")
+          for b in bullets[:12]:
+              print(f"- {b}")
+          print("")
+          print("---")
+          print(f"Build #{run_number} • commit {sha}")
+          PY
+
           if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release edit "$TAG" --title "$TITLE" --notes-file release_notes.md
             gh release upload "$TAG" app/build/outputs/apk/release-artifact/daily-boardgames.apk --clobber
           else
             gh release create "$TAG" app/build/outputs/apk/release-artifact/daily-boardgames.apk \
               --title "$TITLE" \
-              --notes "$NOTES" \
+              --notes-file release_notes.md \
               --latest
           fi

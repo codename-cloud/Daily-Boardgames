@@ -31,6 +31,7 @@ data class GitHubBuildInfo(
     val versionCode: Int?,
     val commitSha: String?,
     val notes: String,
+    val changelogItems: List<String> = emptyList(),
     val publishedAt: String,
     val browserUrl: String,
     val apkDownloadUrl: String?
@@ -46,7 +47,8 @@ sealed interface GitHubCheckStatus {
     data object Checking : GitHubCheckStatus
     data class UpToDate(
         val repo: String,
-        val latestLabel: String
+        val latestLabel: String,
+        val changelogItems: List<String> = emptyList()
     ) : GitHubCheckStatus
 
     data class UpdateAvailable(
@@ -86,16 +88,72 @@ internal data class GitHubWorkflowRunsResponseDto(
     @Json(name = "workflow_runs") val workflowRuns: List<GitHubWorkflowRunDto> = emptyList()
 )
 
+internal data class GitHubHeadCommitDto(
+    val id: String? = null,
+    val message: String? = null
+)
+
 internal data class GitHubWorkflowRunDto(
     val id: Long = 0L,
     val name: String? = null,
     @Json(name = "display_title") val displayTitle: String? = null,
     @Json(name = "run_number") val runNumber: Long = 0L,
     @Json(name = "head_sha") val headSha: String? = null,
+    @Json(name = "head_commit") val headCommit: GitHubHeadCommitDto? = null,
     @Json(name = "html_url") val htmlUrl: String? = null,
     @Json(name = "updated_at") val updatedAt: String? = null,
     val conclusion: String? = null
 )
+
+internal fun formatFriendlyChangelog(rawText: String?): List<String> {
+    if (rawText.isNullOrBlank()) return emptyList()
+    val items = mutableListOf<String>()
+    val seen = mutableSetOf<String>()
+    val conventionalRegex = Regex("""^([a-zA-Z]+)(?:\([^)]+\))?:\s*(.+)$""")
+
+    for (rawLine in rawText.lines()) {
+        var line = rawLine.trim()
+        if (line.isEmpty()) continue
+        if (line.startsWith("#")) continue
+        if (line == "---" || line == "***") continue
+
+        line = line.replace(Regex("""^[-*•]\s*"""), "").trim()
+        if (line.isEmpty()) continue
+
+        val lower = line.lowercase()
+        if (lower.startsWith("co-authored-by:") ||
+            lower.startsWith("signed-off-by:") ||
+            lower.startsWith("change-id:") ||
+            lower.startsWith("merge pull request ") ||
+            lower.startsWith("merge branch ") ||
+            lower.startsWith("automated apk build from workflow run") ||
+            Regex("""^build #\d+\s*[•·-]\s*commit\s+[0-9a-f]+$""").matches(lower)
+        ) {
+            continue
+        }
+
+        val match = conventionalRegex.matchEntire(line)
+        val formatted = if (match != null) {
+            val kind = match.groupValues[1].lowercase()
+            val rest = match.groupValues[2].trim().replaceFirstChar { it.uppercaseChar() }
+            val prefix = when (kind) {
+                "feat", "feature" -> "New: "
+                "fix", "bugfix" -> "Fixed: "
+                "perf", "refactor", "style", "ui" -> "Improved: "
+                else -> ""
+            }
+            "$prefix$rest"
+        } else {
+            line.replaceFirstChar { it.uppercaseChar() }
+        }
+
+        if (formatted.isNotBlank() && seen.add(formatted.lowercase())) {
+            items.add(formatted)
+            if (items.size >= 12) break
+        }
+    }
+    return items
+}
 
 internal fun normalizeGithubRepo(raw: String): String? {
     var trimmed = raw.trim()
@@ -203,6 +261,9 @@ internal object GitHubApiParser {
         }
         val shaMatch = Regex("""commit\s+([0-9a-fA-F]{7,40})""").find(dto.body.orEmpty())
 
+        val bodyText = dto.body?.trim().orEmpty()
+        val changelog = formatFriendlyChangelog(bodyText)
+
         return GitHubBuildInfo(
             repo = repo,
             source = GitHubBuildInfo.Source.RELEASE,
@@ -215,7 +276,8 @@ internal object GitHubApiParser {
             runNumber = runNumber,
             versionCode = derivedVersionCode,
             commitSha = shaMatch?.groupValues?.get(1),
-            notes = dto.body?.trim().orEmpty(),
+            notes = bodyText,
+            changelogItems = changelog,
             publishedAt = dto.publishedAt.orEmpty(),
             browserUrl = htmlUrl,
             apkDownloadUrl = apkUrl
@@ -228,6 +290,10 @@ internal object GitHubApiParser {
             it.conclusion == null || it.conclusion.equals("success", ignoreCase = true)
         } ?: return null
         val htmlUrl = run.htmlUrl?.takeIf { it.isNotBlank() } ?: return null
+        val commitMessage = run.headCommit?.message?.takeIf { it.isNotBlank() }
+            ?: run.displayTitle?.takeIf { it.isNotBlank() }
+            ?: ""
+        val changelog = formatFriendlyChangelog(commitMessage)
         return GitHubBuildInfo(
             repo = repo,
             source = GitHubBuildInfo.Source.WORKFLOW_RUN,
@@ -238,7 +304,8 @@ internal object GitHubApiParser {
             runNumber = run.runNumber,
             versionCode = if (run.runNumber > 0L) (11L + run.runNumber).toInt() else null,
             commitSha = run.headSha,
-            notes = "Built by GitHub Actions workflow run #${run.runNumber}.",
+            notes = commitMessage.ifBlank { "Built by GitHub Actions workflow run #${run.runNumber}." },
+            changelogItems = changelog,
             publishedAt = run.updatedAt.orEmpty(),
             browserUrl = htmlUrl,
             apkDownloadUrl = null
@@ -325,7 +392,8 @@ object GitHubUpdateManager {
             } else {
                 GitHubCheckStatus.UpToDate(
                     repo = repo,
-                    latestLabel = latestBuild.tagOrVersion
+                    latestLabel = latestBuild.tagOrVersion,
+                    changelogItems = latestBuild.changelogItems
                 )
             }
         } catch (e: Exception) {

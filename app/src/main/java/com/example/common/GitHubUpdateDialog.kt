@@ -205,27 +205,38 @@ fun GitHubUpdateDialog(
                             colors = colors,
                             borderColor = Color(0xFF16A34A).copy(alpha = 0.6f)
                         ) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(8.dp)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.CheckCircle,
-                                    contentDescription = null,
-                                    tint = Color(0xFF22C55E),
-                                    modifier = Modifier.size(20.dp)
-                                )
-                                Column {
-                                    Text(
-                                        text = "You're up to date!",
-                                        fontWeight = FontWeight.Bold,
-                                        fontSize = 14.sp,
-                                        color = colors.primaryText
+                            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.CheckCircle,
+                                        contentDescription = null,
+                                        tint = Color(0xFF22C55E),
+                                        modifier = Modifier.size(20.dp)
                                     )
-                                    Text(
-                                        text = "Latest on ${status.repo}: ${status.latestLabel}",
-                                        fontSize = 12.sp,
-                                        color = colors.secondaryText
+                                    Column {
+                                        Text(
+                                            text = "You're up to date!",
+                                            fontWeight = FontWeight.Bold,
+                                            fontSize = 14.sp,
+                                            color = colors.primaryText
+                                        )
+                                        Text(
+                                            text = "Latest on ${status.repo}: ${status.latestLabel}",
+                                            fontSize = 12.sp,
+                                            color = colors.secondaryText
+                                        )
+                                    }
+                                }
+
+                                if (status.changelogItems.isNotEmpty()) {
+                                    ChangelogListSection(
+                                        heading = "Latest Build Changes",
+                                        items = status.changelogItems,
+                                        colors = colors,
+                                        isOledMode = isOledMode
                                     )
                                 }
                             }
@@ -239,7 +250,7 @@ fun GitHubUpdateDialog(
                             colors = colors,
                             borderColor = Color(0xFF2563EB)
                         ) {
-                            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                                 Row(
                                     verticalAlignment = Alignment.CenterVertically,
                                     horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -265,12 +276,15 @@ fun GitHubUpdateDialog(
                                     }
                                 }
 
-                                if (build.notes.isNotBlank()) {
-                                    Text(
-                                        text = build.notes,
-                                        fontSize = 12.sp,
-                                        lineHeight = 17.sp,
-                                        color = colors.secondaryText
+                                val displayItems = build.changelogItems.ifEmpty {
+                                    build.notes.takeIf { it.isNotBlank() }?.let { listOf(it) }.orEmpty()
+                                }
+                                if (displayItems.isNotEmpty()) {
+                                    ChangelogListSection(
+                                        heading = "What's New",
+                                        items = displayItems,
+                                        colors = colors,
+                                        isOledMode = isOledMode
                                     )
                                 }
 
@@ -382,6 +396,52 @@ fun GitHubUpdateDialog(
             }
         }
     )
+}
+
+@Composable
+private fun ChangelogListSection(
+    heading: String,
+    items: List<String>,
+    colors: ArcadeThemeColors,
+    isOledMode: Boolean
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(8.dp))
+            .background(if (isOledMode) Color(0xFF121826) else colors.cardBackground.copy(alpha = 0.7f))
+            .border(1.dp, colors.cardBorder, RoundedCornerShape(8.dp))
+            .padding(horizontal = 10.dp, vertical = 8.dp)
+            .testTag("github_update_changelog"),
+        verticalArrangement = Arrangement.spacedBy(4.dp)
+    ) {
+        Text(
+            text = heading,
+            fontFamily = OutfitFontFamily,
+            fontWeight = FontWeight.SemiBold,
+            fontSize = 12.sp,
+            color = colors.primaryText
+        )
+        items.forEach { entry ->
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                verticalAlignment = Alignment.Top
+            ) {
+                Text(
+                    text = "•",
+                    fontSize = 12.5.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFF60A5FA)
+                )
+                Text(
+                    text = entry,
+                    fontSize = 12.sp,
+                    lineHeight = 17.sp,
+                    color = colors.secondaryText
+                )
+            }
+        }
+    }
 }
 
 @Composable

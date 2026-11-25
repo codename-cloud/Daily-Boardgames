@@ -6,6 +6,7 @@ import android.content.SharedPreferences
 import com.example.common.AppSettingsStore
 import com.example.common.GitHubApiParser
 import com.example.common.GitHubBuildInfo
+import com.example.common.formatFriendlyChangelog
 import com.example.common.isRemoteBuildNewer
 import com.example.common.normalizeGithubRepo
 import org.junit.Assert.assertEquals
@@ -112,6 +113,10 @@ class GitHubUpdaterTest {
                   "display_title": "Update Solitaire layout",
                   "run_number": 8,
                   "head_sha": "def5678901234",
+                  "head_commit": {
+                    "id": "def5678901234",
+                    "message": "feat(solitaire): align waste pile closer to stock\nfix: disable OLED toggle in light mode\nCo-authored-by: Bot <bot@example.com>"
+                  },
                   "html_url": "https://github.com/kody/daily-boardgames/actions/runs/999111",
                   "updated_at": "2026-11-25T12:30:00Z",
                   "conclusion": "success"
@@ -128,6 +133,35 @@ class GitHubUpdaterTest {
         assertEquals(19, info.versionCode)
         assertEquals("https://github.com/kody/daily-boardgames/actions/runs/999111", info.browserUrl)
         assertNull(info.apkDownloadUrl)
+        assertEquals(
+            listOf(
+                "New: Align waste pile closer to stock",
+                "Fixed: Disable OLED toggle in light mode"
+            ),
+            info.changelogItems
+        )
+    }
+
+    @Test
+    fun testFormatFriendlyChangelogCleansReleaseAndCommitMarkdown() {
+        val releaseNotes = """
+            ### What's New in Build #7
+            - feat(settings): add dark mode toggle
+            - fix: prevent OLED in light mode
+            - improved landscape layout
+
+            ---
+            Build #7 • commit abc1234
+        """.trimIndent()
+
+        assertEquals(
+            listOf(
+                "New: Add dark mode toggle",
+                "Fixed: Prevent OLED in light mode",
+                "Improved landscape layout"
+            ),
+            formatFriendlyChangelog(releaseNotes)
+        )
     }
 
     @Test

@@ -24,7 +24,6 @@ data class SolitaireUiState(
     val status: GameStatus = GameStatus.READY,
     val timerSeconds: Int = 0,
     val selection: SolitaireSelection? = null,
-    val hint: SolitaireHint? = null,
     val canUndo: Boolean = false,
     val canAutoComplete: Boolean = false,
     val isAutoCompleting: Boolean = false,
@@ -96,7 +95,6 @@ class SolitaireViewModel(application: Application) : AndroidViewModel(applicatio
                 status = GameStatus.READY,
                 timerSeconds = 0,
                 selection = null,
-                hint = null,
                 canUndo = false,
                 canAutoComplete = false,
                 isAutoCompleting = false,
@@ -119,7 +117,6 @@ class SolitaireViewModel(application: Application) : AndroidViewModel(applicatio
                 status = GameStatus.READY,
                 timerSeconds = 0,
                 selection = null,
-                hint = null,
                 canUndo = false,
                 canAutoComplete = false,
                 isAutoCompleting = false,
@@ -151,11 +148,11 @@ class SolitaireViewModel(application: Application) : AndroidViewModel(applicatio
             if (moved != null) {
                 applyMove(moved, isCardPlace = true)
             } else {
-                _uiState.update { it.copy(selection = null, hint = null) }
+                _uiState.update { it.copy(selection = null) }
             }
         } else {
             if (state.isHapticsEnabled) hapticManager.performRevealHaptic()
-            _uiState.update { it.copy(selection = SolitaireSelection.Waste, hint = null) }
+            _uiState.update { it.copy(selection = SolitaireSelection.Waste) }
         }
     }
 
@@ -179,9 +176,9 @@ class SolitaireViewModel(application: Application) : AndroidViewModel(applicatio
         // Select foundation top card if present
         if (state.game.foundations.getOrNull(foundationIdx)?.isNotEmpty() == true) {
             val newSel = if (sel == SolitaireSelection.Foundation(foundationIdx)) null else SolitaireSelection.Foundation(foundationIdx)
-            _uiState.update { it.copy(selection = newSel, hint = null) }
+            _uiState.update { it.copy(selection = newSel) }
         } else {
-            _uiState.update { it.copy(selection = null, hint = null) }
+            _uiState.update { it.copy(selection = null) }
         }
     }
 
@@ -198,7 +195,7 @@ class SolitaireViewModel(application: Application) : AndroidViewModel(applicatio
                 if (smart != null) {
                     applyMove(smart, isCardPlace = true)
                 } else {
-                    _uiState.update { it.copy(selection = null, hint = null) }
+                    _uiState.update { it.copy(selection = null) }
                 }
                 return
             }
@@ -219,9 +216,9 @@ class SolitaireViewModel(application: Application) : AndroidViewModel(applicatio
         val tappedCard = pile.getOrNull(cardIndex)
         if (tappedCard != null && tappedCard.isFaceUp) {
             if (state.isHapticsEnabled) hapticManager.performRevealHaptic()
-            _uiState.update { it.copy(selection = SolitaireSelection.Tableau(col, cardIndex), hint = null) }
+            _uiState.update { it.copy(selection = SolitaireSelection.Tableau(col, cardIndex)) }
         } else {
-            _uiState.update { it.copy(selection = null, hint = null) }
+            _uiState.update { it.copy(selection = null) }
         }
     }
 
@@ -233,24 +230,16 @@ class SolitaireViewModel(application: Application) : AndroidViewModel(applicatio
             it.copy(
                 game = previous,
                 selection = null,
-                hint = null,
                 canUndo = undoStack.isNotEmpty(),
                 canAutoComplete = SolitaireEngine.canAutoComplete(previous)
             )
         }
     }
 
-    fun requestHint() {
-        val state = _uiState.value
-        if (state.status == GameStatus.WON || state.isAutoCompleting) return
-        val hint = SolitaireEngine.findHint(state.game)
-        _uiState.update { it.copy(hint = hint, selection = null) }
-    }
-
     fun triggerAutoComplete() {
         val state = _uiState.value
         if (!state.canAutoComplete || state.isAutoCompleting) return
-        _uiState.update { it.copy(isAutoCompleting = true, selection = null, hint = null) }
+        _uiState.update { it.copy(isAutoCompleting = true, selection = null) }
         autoCompleteJob?.cancel()
         autoCompleteJob = viewModelScope.launch {
             while (isActive) {
@@ -344,7 +333,6 @@ class SolitaireViewModel(application: Application) : AndroidViewModel(applicatio
                     game = next,
                     status = GameStatus.WON,
                     selection = null,
-                    hint = null,
                     canUndo = false,
                     canAutoComplete = false,
                     isAutoCompleting = false,
@@ -361,7 +349,6 @@ class SolitaireViewModel(application: Application) : AndroidViewModel(applicatio
                     game = next,
                     status = GameStatus.RUNNING,
                     selection = null,
-                    hint = null,
                     canUndo = undoStack.isNotEmpty(),
                     canAutoComplete = SolitaireEngine.canAutoComplete(next)
                 )

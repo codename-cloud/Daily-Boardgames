@@ -136,13 +136,6 @@ fun SolitaireScreen(
                         testTag = "solitaire_undo_button"
                     )
                     ArcadePillButton(
-                        label = "Hint",
-                        selected = false,
-                        isOledMode = uiState.isOledMode,
-                        onClick = { viewModel.requestHint() },
-                        testTag = "solitaire_hint_button"
-                    )
-                    ArcadePillButton(
                         label = "Replay",
                         selected = false,
                         isOledMode = uiState.isOledMode,
@@ -188,13 +181,6 @@ fun SolitaireScreen(
                             testTag = "solitaire_undo_button"
                         )
                         ArcadePillButton(
-                            label = "Hint",
-                            selected = false,
-                            isOledMode = uiState.isOledMode,
-                            onClick = { viewModel.requestHint() },
-                            testTag = "solitaire_hint_button"
-                        )
-                        ArcadePillButton(
                             label = "Replay",
                             selected = false,
                             isOledMode = uiState.isOledMode,
@@ -202,25 +188,6 @@ fun SolitaireScreen(
                             testTag = "solitaire_replay_button"
                         )
                     }
-                }
-            }
-
-            if (uiState.hint != null) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 10.dp, vertical = 2.dp)
-                        .clip(RoundedCornerShape(8.dp))
-                        .background(if (uiState.isOledMode) Color(0xFF0A192F) else Color(0xFF1E3A8A).copy(alpha = 0.9f))
-                        .padding(horizontal = 10.dp, vertical = 4.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = "Hint: ${uiState.hint?.description}",
-                        color = Color.White,
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.SemiBold
-                    )
                 }
             }
 
@@ -371,7 +338,6 @@ fun SolitaireScreen(
                                     targetOffsetPx = stockOffsetPx,
                                     entranceOriginPx = if (isTop && recycledFromWaste) wasteBaseOffsetPx else null,
                                     restZIndex = 1f + idx,
-                                    isHinted = isTop && uiState.hint?.source == SolitaireSelection.Waste && game.waste.isEmpty(),
                                     onClick = if (isTop) ({ viewModel.onStockClick() }) else null
                                 )
                             )
@@ -399,7 +365,6 @@ fun SolitaireScreen(
                                     entranceFlip = justDrawn,
                                     restZIndex = 20f + idx,
                                     isSelected = isTop && uiState.selection == SolitaireSelection.Waste,
-                                    isHinted = isTop && uiState.hint?.source == SolitaireSelection.Waste,
                                     onClick = if (isTop) ({ viewModel.onWasteClick() }) else null
                                 )
                             )
@@ -436,12 +401,9 @@ fun SolitaireScreen(
                                 )
                                 val colX = tableauColStep * col
                                 val sel = uiState.selection
-                                val hintSrc = uiState.hint?.source
                                 pile.forEachIndexed { idx, card ->
                                     val isSelected = sel is SolitaireSelection.Tableau &&
                                         sel.col == col && idx >= sel.cardIndex
-                                    val isHinted = hintSrc is SolitaireSelection.Tableau &&
-                                        hintSrc.col == col && idx >= hintSrc.cardIndex
                                     val targetPx = with(density) {
                                         Offset(colX.toPx(), (tableauTopY + offsets[idx]).toPx())
                                     }
@@ -452,7 +414,6 @@ fun SolitaireScreen(
                                             targetOffsetPx = targetPx,
                                             restZIndex = 10f + idx,
                                             isSelected = isSelected,
-                                            isHinted = isHinted,
                                             onClick = { viewModel.onTableauCardClick(col, idx) }
                                         )
                                     )

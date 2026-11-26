@@ -3,7 +3,6 @@ package com.example.cards
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.VectorConverter
-import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Box
@@ -26,7 +25,6 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.TextUnit
-import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -121,9 +119,9 @@ fun AnimatedBoardCard(
         val moveJob = if (posAnim.value != placement.targetOffsetPx) {
             launch {
                 val spec = if (pileChanged || isEntrance) {
-                    spring<Offset>(dampingRatio = 0.84f, stiffness = 560f)
+                    spring<Offset>(dampingRatio = 0.94f, stiffness = 580f)
                 } else {
-                    spring<Offset>(dampingRatio = 0.90f, stiffness = 640f)
+                    spring<Offset>(dampingRatio = 0.96f, stiffness = 640f)
                 }
                 posAnim.animateTo(
                     targetValue = placement.targetOffsetPx,
@@ -146,22 +144,6 @@ fun AnimatedBoardCard(
         isFlightActive = false
     }
 
-    val scale by animateFloatAsState(
-        targetValue = when {
-            inFlight -> 1.045f
-            placement.isSelected -> 1.035f
-            else -> 1f
-        },
-        animationSpec = spring(dampingRatio = 0.78f, stiffness = 580f),
-        label = "card_scale"
-    )
-
-    val selectionLiftPx by animateFloatAsState(
-        targetValue = if (placement.isSelected) with(density) { (-4).dp.toPx() } else 0f,
-        animationSpec = spring(dampingRatio = 0.78f, stiffness = 600f),
-        label = "card_selection_lift"
-    )
-
     val flipDeg = flipAnim.value
     val showFace = flipDeg <= 90f
     val renderedCard = if (showFace == placement.card.isFaceUp) {
@@ -171,26 +153,20 @@ fun AnimatedBoardCard(
     }
     val rotationYDeg = if (flipDeg > 90f) 180f - flipDeg else -flipDeg
 
-    val effectiveZIndex = when {
-        inFlight -> 100f + placement.restZIndex
-        placement.isSelected -> placement.restZIndex + 0.5f
-        else -> placement.restZIndex
-    }
+    val effectiveZIndex = if (inFlight) 100f + placement.restZIndex else placement.restZIndex
 
     Box(
         modifier = Modifier
             .offset {
                 IntOffset(
                     x = posAnim.value.x.roundToInt(),
-                    y = (posAnim.value.y + selectionLiftPx).roundToInt()
+                    y = posAnim.value.y.roundToInt()
                 )
             }
             .zIndex(effectiveZIndex)
             .width(cardWidth)
             .height(cardHeight)
             .graphicsLayer {
-                scaleX = scale
-                scaleY = scale
                 rotationY = rotationYDeg
                 cameraDistance = 12f * density.density
             }

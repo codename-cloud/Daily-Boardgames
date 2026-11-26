@@ -24,7 +24,6 @@ data class FreeCellUiState(
     val status: GameStatus = GameStatus.READY,
     val timerSeconds: Int = 0,
     val selection: FreeCellSelection? = null,
-    val hint: FreeCellHint? = null,
     val canUndo: Boolean = false,
     val isAutoFoundationEnabled: Boolean = true,
     val isOledMode: Boolean = false,
@@ -95,7 +94,6 @@ class FreeCellViewModel(application: Application) : AndroidViewModel(application
                 status = GameStatus.READY,
                 timerSeconds = 0,
                 selection = null,
-                hint = null,
                 canUndo = false,
                 isNewBestTime = false,
                 showVictoryDialog = false,
@@ -116,7 +114,6 @@ class FreeCellViewModel(application: Application) : AndroidViewModel(application
                 status = GameStatus.READY,
                 timerSeconds = 0,
                 selection = null,
-                hint = null,
                 canUndo = false,
                 isNewBestTime = false,
                 showVictoryDialog = false
@@ -142,7 +139,7 @@ class FreeCellViewModel(application: Application) : AndroidViewModel(application
                 if (smart != null) {
                     applyMove(smart)
                 } else {
-                    _uiState.update { it.copy(selection = null, hint = null) }
+                    _uiState.update { it.copy(selection = null) }
                 }
                 return
             }
@@ -164,9 +161,9 @@ class FreeCellViewModel(application: Application) : AndroidViewModel(application
 
         if (state.game.freeCells.getOrNull(cellIdx) != null) {
             if (state.isHapticsEnabled) hapticManager.performRevealHaptic()
-            _uiState.update { it.copy(selection = FreeCellSelection.FreeCell(cellIdx), hint = null) }
+            _uiState.update { it.copy(selection = FreeCellSelection.FreeCell(cellIdx)) }
         } else {
-            _uiState.update { it.copy(selection = null, hint = null) }
+            _uiState.update { it.copy(selection = null) }
         }
     }
 
@@ -194,9 +191,9 @@ class FreeCellViewModel(application: Application) : AndroidViewModel(application
 
         if (state.game.foundations.getOrNull(foundationIdx)?.isNotEmpty() == true) {
             val newSel = if (sel == FreeCellSelection.Foundation(foundationIdx)) null else FreeCellSelection.Foundation(foundationIdx)
-            _uiState.update { it.copy(selection = newSel, hint = null) }
+            _uiState.update { it.copy(selection = newSel) }
         } else {
-            _uiState.update { it.copy(selection = null, hint = null) }
+            _uiState.update { it.copy(selection = null) }
         }
     }
 
@@ -212,7 +209,7 @@ class FreeCellViewModel(application: Application) : AndroidViewModel(application
                 if (smart != null) {
                     applyMove(smart)
                 } else {
-                    _uiState.update { it.copy(selection = null, hint = null) }
+                    _uiState.update { it.copy(selection = null) }
                 }
                 return
             }
@@ -229,9 +226,9 @@ class FreeCellViewModel(application: Application) : AndroidViewModel(application
 
         if (cardIndex in pile.indices && FreeCellEngine.isOrderedRun(pile, cardIndex)) {
             if (state.isHapticsEnabled) hapticManager.performRevealHaptic()
-            _uiState.update { it.copy(selection = FreeCellSelection.Tableau(col, cardIndex), hint = null) }
+            _uiState.update { it.copy(selection = FreeCellSelection.Tableau(col, cardIndex)) }
         } else {
-            _uiState.update { it.copy(selection = null, hint = null) }
+            _uiState.update { it.copy(selection = null) }
         }
     }
 
@@ -244,16 +241,9 @@ class FreeCellViewModel(application: Application) : AndroidViewModel(application
             it.copy(
                 game = prev,
                 selection = null,
-                hint = null,
                 canUndo = undoStack.isNotEmpty()
             )
         }
-    }
-
-    fun requestHint() {
-        val state = _uiState.value
-        if (state.status == GameStatus.WON) return
-        _uiState.update { it.copy(hint = FreeCellEngine.findHint(state.game), selection = null) }
     }
 
     fun setOledMode(enabled: Boolean) {
@@ -311,7 +301,6 @@ class FreeCellViewModel(application: Application) : AndroidViewModel(application
                     game = next,
                     status = GameStatus.RUNNING,
                     selection = null,
-                    hint = null,
                     canUndo = undoStack.isNotEmpty()
                 )
             }
@@ -363,7 +352,6 @@ class FreeCellViewModel(application: Application) : AndroidViewModel(application
                 game = wonState,
                 status = GameStatus.WON,
                 selection = null,
-                hint = null,
                 canUndo = false,
                 stats = updatedStats,
                 isNewBestTime = isNewBest,

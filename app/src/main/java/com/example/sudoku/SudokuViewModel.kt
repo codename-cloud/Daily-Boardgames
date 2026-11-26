@@ -28,6 +28,7 @@ data class SudokuUiState(
     val selectedCell: Pair<Int, Int>? = null,
     val isNotesMode: Boolean = false,
     val mistakes: Int = 0,
+    val resetCount: Int = 0,
     val remainingEmptyCells: Int = 41,
     val canUndo: Boolean = false,
     val isOledMode: Boolean = false,
@@ -197,6 +198,10 @@ class SudokuViewModel(application: Application) : AndroidViewModel(application) 
         }
 
         val newMistakes = if (newValue != 0 && isMistake) state.mistakes + 1 else state.mistakes
+        if (newMistakes >= 3) {
+            resetCurrentBoardAfterMistakeLimit()
+            return
+        }
         applyBoardUpdate(updatedBoard, newMistakes)
     }
 
@@ -217,43 +222,28 @@ class SudokuViewModel(application: Application) : AndroidViewModel(application) 
         applyBoardUpdate(updatedBoard, state.mistakes)
     }
 
-    fun useHint() {
-        val state = _uiState.value
-        if (state.status == GameStatus.WON || state.board.isEmpty()) return
-
-        val selected = state.selectedCell
-        val target: SudokuCell = if (selected != null) {
-            val sCell = state.board[selected.first][selected.second]
-            if (!sCell.isGiven && sCell.value != sCell.solution) sCell
-            else findFirstUnsolvedCell(state.board) ?: return
-        } else {
-            findFirstUnsolvedCell(state.board) ?: return
-        }
-
-        if (state.status == GameStatus.READY) startTimer()
-        undoStack.add(state.board)
-
-        val updatedBoard = state.board.mapIndexed { rowIdx, rowList ->
-            rowList.mapIndexed { colIdx, cur ->
-                if (rowIdx == target.row && colIdx == target.col) {
-                    cur.copy(value = cur.solution, notes = emptySet(), isError = false)
-                } else {
-                    cur
-                }
+    private fun resetCurrentBoardAfterMistakeLimit() {
+        timerJob?.cancel()
+        undoStack.clear()
+        val clearedBoard = _uiState.value.board.map { rowList ->
+            rowList.map { cell ->
+                if (cell.isGiven) cell
+                else cell.copy(value = 0, notes = emptySet(), isError = false)
             }
         }
-        if (state.isSoundEnabled) soundManager.playChord()
-        _uiState.update { it.copy(selectedCell = target.row to target.col) }
-        applyBoardUpdate(updatedBoard, state.mistakes)
-    }
-
-    private fun findFirstUnsolvedCell(board: List<List<SudokuCell>>): SudokuCell? {
-        for (row in board) {
-            for (cell in row) {
-                if (!cell.isGiven && cell.value != cell.solution) return cell
-            }
+        val emptyCount = clearedBoard.sumOf { row -> row.count { it.value == 0 } }
+        _uiState.update {
+            it.copy(
+                board = clearedBoard,
+                status = GameStatus.READY,
+                timerSeconds = 0,
+                selectedCell = null,
+                mistakes = 0,
+                resetCount = it.resetCount + 1,
+                remainingEmptyCells = emptyCount,
+                canUndo = false
+            )
         }
-        return null
     }
 
     fun undo() {

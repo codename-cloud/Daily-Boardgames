@@ -116,7 +116,7 @@ internal fun tutorialStepsFor(game: GameDestination): List<TutorialStep> = when 
         ),
         TutorialStep(
             title = "Smart Moves & Auto-Finish",
-            description = "Tap a card to select it, then tap a destination—or tap Auto once all cards are face up to finish cleanly. Undo, Hint, and Replay are always ready.",
+            description = "Tap a card to select it, then tap a destination—or tap Auto once all cards are face up to finish cleanly. Undo and Replay are always ready.",
             visualType = TutorialVisualType.SOL_CONTROLS
         )
     )
@@ -138,8 +138,8 @@ internal fun tutorialStepsFor(game: GameDestination): List<TutorialStep> = when 
             visualType = TutorialVisualType.FC_SPACE
         ),
         TutorialStep(
-            title = "Undo, Hint & Replay",
-            description = "Stuck on a tricky deal? Use Undo to rewind moves, Hint to spot a legal play, or Replay to restart the exact numbered deal.",
+            title = "Undo & Replay",
+            description = "Stuck on a tricky deal? Use Undo to rewind moves or Replay to restart the exact numbered deal.",
             visualType = TutorialVisualType.FC_CONTROLS
         )
     )
@@ -161,8 +161,8 @@ internal fun tutorialStepsFor(game: GameDestination): List<TutorialStep> = when 
             visualType = TutorialVisualType.SUDOKU_NOTES
         ),
         TutorialStep(
-            title = "Keypad, Hints & Difficulty",
-            description = "Each key shows how many of that digit remain. Use Erase, Undo, or Hint anytime, and pick Easy to Expert in Game Settings.",
+            title = "Tools, Mistakes & Difficulty",
+            description = "Use Undo, Erase, or Notes anytime—and watch your mistakes, since 3 mistakes will clear and reset the board. Pick Easy to Expert in Game Settings.",
             visualType = TutorialVisualType.SUDOKU_TOOLS
         )
     )
@@ -539,7 +539,6 @@ private fun TutorialIllustration(
                 )
             }
             ArcadePillButton(label = "Undo", selected = false, isOledMode = isOledMode, onClick = {})
-            ArcadePillButton(label = "Hint", selected = false, isOledMode = isOledMode, onClick = {})
             ArcadePillButton(label = "Replay", selected = false, isOledMode = isOledMode, onClick = {})
         }
 
@@ -664,26 +663,24 @@ private fun TutorialIllustration(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                ArcadePillButton(label = "Undo", selected = false, isOledMode = isOledMode, onClick = {})
-                ArcadePillButton(label = "Notes ON", selected = true, isOledMode = isOledMode, onClick = {})
-                ArcadePillButton(label = "Hint", selected = false, isOledMode = isOledMode, onClick = {})
-            }
             Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                listOf("1" to "4", "2" to "2", "3" to "1", "4" to "3").forEach { (digit, rem) ->
-                    Column(
+                listOf("1", "2", "3", "4").forEach { digit ->
+                    Box(
                         modifier = Modifier
-                            .width(34.dp)
+                            .size(width = 34.dp, height = 34.dp)
                             .clip(RoundedCornerShape(6.dp))
-                            .background(if (isOledMode) Color(0xFF111827) else Color(0xFF1E293B))
-                            .border(1.dp, Color(0xFF334155), RoundedCornerShape(6.dp))
-                            .padding(vertical = 3.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
+                            .background(if (isOledMode) Color(0xFF1D222B) else Color(0xFF1E293B))
+                            .border(1.dp, Color(0xFF334155), RoundedCornerShape(6.dp)),
+                        contentAlignment = Alignment.Center
                     ) {
-                        Text(digit, color = Color(0xFF60A5FA), fontFamily = JetBrainsMonoFontFamily, fontWeight = FontWeight.Bold, fontSize = 13.sp)
-                        Text(rem, color = Color(0xFF94A3B8), fontFamily = JetBrainsMonoFontFamily, fontSize = 8.sp)
+                        Text(digit, color = Color(0xFF60A5FA), fontFamily = JetBrainsMonoFontFamily, fontWeight = FontWeight.Bold, fontSize = 15.sp)
                     }
                 }
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                ArcadePillButton(label = "Undo", selected = false, isOledMode = isOledMode, onClick = {})
+                ArcadePillButton(label = "Erase", selected = false, isOledMode = isOledMode, onClick = {})
+                ArcadePillButton(label = "Notes ON", selected = true, isOledMode = isOledMode, onClick = {})
             }
         }
     }

@@ -1,5 +1,6 @@
 package com.example.sudoku
 
+import android.content.res.Configuration
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -46,6 +47,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
@@ -128,7 +130,7 @@ fun SudokuScreen(
                         modifier = Modifier.padding(end = 6.dp)
                     )
                     Text(
-                        text = "Mistakes: ${uiState.mistakes}",
+                        text = "Mistakes: ${uiState.mistakes}/3",
                         color = if (uiState.mistakes > 0) Color(0xFFF87171) else colors.secondaryText,
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Bold,
@@ -153,7 +155,7 @@ fun SudokuScreen(
                     )
 
                     Text(
-                        text = "Mistakes: ${uiState.mistakes}",
+                        text = "Mistakes: ${uiState.mistakes}/3",
                         color = if (uiState.mistakes > 0) Color(0xFFF87171) else colors.secondaryText,
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Bold,
@@ -163,68 +165,56 @@ fun SudokuScreen(
                 }
             }
 
-            // 9x9 Sudoku Grid (Minesweeper square-tile styling + OLED pure black support)
+            var showMistakeResetNotice by remember { mutableStateOf(false) }
+            LaunchedEffect(uiState.resetCount) {
+                if (uiState.resetCount > 0) {
+                    showMistakeResetNotice = true
+                    kotlinx.coroutines.delay(2200)
+                    showMistakeResetNotice = false
+                }
+            }
+            if (showMistakeResetNotice) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 10.dp, vertical = 2.dp)
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(Color(0xFF991B1B).copy(alpha = 0.92f))
+                        .padding(horizontal = 10.dp, vertical = 4.dp)
+                        .testTag("sudoku_mistake_reset_banner"),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "3 mistakes reached — board cleared",
+                        color = Color.White,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
+            }
+
+            val configuration = LocalConfiguration.current
+            val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
+
+            // 9x9 Sudoku Grid centered between HUD and bottom controls
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .weight(1f)
-                    .padding(horizontal = 10.dp, vertical = 6.dp),
+                    .padding(horizontal = 12.dp, vertical = if (isLandscape) 4.dp else 8.dp),
                 contentAlignment = Alignment.Center
             ) {
                 if (uiState.board.isNotEmpty()) {
                     SudokuBoardView(
                         board = uiState.board,
                         selectedCell = uiState.selectedCell,
-                        isOledMode = uiState.isOledMode,
                         isDark = isDark,
                         onCellClick = { r, c -> viewModel.selectCell(r, c) }
                     )
                 }
             }
 
-            // Tools Row: Undo, Erase, Notes, Hint
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 10.dp, vertical = 4.dp),
-                horizontalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterHorizontally)
-            ) {
-                ArcadePillButton(
-                    label = "Undo",
-                    selected = false,
-                    enabled = uiState.canUndo,
-                    isOledMode = uiState.isOledMode,
-                    onClick = { viewModel.undo() },
-                    modifier = Modifier.weight(1f),
-                    testTag = "sudoku_undo_button"
-                )
-                ArcadePillButton(
-                    label = "Erase",
-                    selected = false,
-                    isOledMode = uiState.isOledMode,
-                    onClick = { viewModel.eraseCell() },
-                    modifier = Modifier.weight(1f),
-                    testTag = "sudoku_erase_button"
-                )
-                ArcadePillButton(
-                    label = if (uiState.isNotesMode) "Notes ON" else "Notes",
-                    selected = uiState.isNotesMode,
-                    isOledMode = uiState.isOledMode,
-                    onClick = { viewModel.toggleNotesMode() },
-                    modifier = Modifier.weight(1f),
-                    testTag = "sudoku_notes_button"
-                )
-                ArcadePillButton(
-                    label = "Hint",
-                    selected = false,
-                    isOledMode = uiState.isOledMode,
-                    onClick = { viewModel.useHint() },
-                    modifier = Modifier.weight(1f),
-                    testTag = "sudoku_hint_button"
-                )
-            }
-
-            // 1..9 Number Pad
+            // Bottom Controls Dock: 1..9 Number Pad above Undo / Erase / Notes
             val digitCounts = remember(uiState.board) {
                 val counts = IntArray(10)
                 for (row in uiState.board) {
@@ -235,64 +225,118 @@ fun SudokuScreen(
                 counts
             }
 
-            Row(
+            val effectiveOled = isDark && uiState.isOledMode
+            val dockBg = when {
+                effectiveOled -> Color(0xFF121316)
+                isDark -> Color(0xFF111827)
+                else -> Color(0xFFE2E8F0)
+            }
+            val dockBorder = when {
+                effectiveOled -> Color(0xFF262A33)
+                isDark -> Color(0xFF334155)
+                else -> Color(0xFFCBD5E1)
+            }
+            val dockShape = RoundedCornerShape(20.dp)
+
+            Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 8.dp)
-                    .padding(top = 4.dp, bottom = 10.dp),
-                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    .padding(
+                        start = 10.dp,
+                        end = 10.dp,
+                        top = if (isLandscape) 2.dp else 4.dp,
+                        bottom = if (isLandscape) 6.dp else 24.dp
+                    )
+                    .clip(dockShape)
+                    .background(dockBg)
+                    .border(1.dp, dockBorder, dockShape)
+                    .padding(
+                        horizontal = if (isLandscape) 8.dp else 10.dp,
+                        vertical = if (isLandscape) 6.dp else 12.dp
+                    ),
+                verticalArrangement = Arrangement.spacedBy(if (isLandscape) 6.dp else 10.dp)
             ) {
-                for (digit in 1..9) {
-                    val remaining = (9 - digitCounts[digit]).coerceAtLeast(0)
-                    val isDone = remaining == 0
-                    val keyBg = when {
-                        isDone -> colors.pillInactiveBg.copy(alpha = 0.35f)
-                        uiState.isOledMode -> Color(0xFF111827)
-                        isDark -> Color(0xFF1E293B)
-                        else -> Color.White
-                    }
-                    val keyBorder = when {
-                        isDone -> Color.Transparent
-                        uiState.isOledMode -> Color(0xFF334155)
-                        isDark -> Color(0xFF475569)
-                        else -> Color(0xFF94A3B8)
-                    }
-                    val keyTextColor = when {
-                        isDone -> colors.secondaryText.copy(alpha = 0.35f)
-                        uiState.isOledMode || isDark -> Color(0xFF60A5FA)
-                        else -> Color(0xFF1D4ED8)
-                    }
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(if (isLandscape) 4.dp else 5.dp)
+                ) {
+                    for (digit in 1..9) {
+                        val remaining = (9 - digitCounts[digit]).coerceAtLeast(0)
+                        val isDone = remaining == 0
+                        val keyBg = when {
+                            isDone -> colors.pillInactiveBg.copy(alpha = 0.35f)
+                            effectiveOled -> Color(0xFF1D222B)
+                            isDark -> Color(0xFF1E293B)
+                            else -> Color.White
+                        }
+                        val keyBorder = when {
+                            isDone -> Color.Transparent
+                            effectiveOled -> Color(0xFF334155)
+                            isDark -> Color(0xFF475569)
+                            else -> Color(0xFF94A3B8)
+                        }
+                        val keyTextColor = when {
+                            isDone -> colors.secondaryText.copy(alpha = 0.35f)
+                            isDark -> Color(0xFF60A5FA)
+                            else -> Color(0xFF1D4ED8)
+                        }
 
-                    Column(
-                        modifier = Modifier
-                            .weight(1f)
-                            .height(50.dp)
-                            .clip(RoundedCornerShape(8.dp))
-                            .background(keyBg)
-                            .border(1.dp, keyBorder, RoundedCornerShape(8.dp))
-                            .clickable(
-                                enabled = !isDone,
-                                role = Role.Button,
-                                onClick = { viewModel.enterDigit(digit) }
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(if (isLandscape) 44.dp else 58.dp)
+                                .clip(RoundedCornerShape(10.dp))
+                                .background(keyBg)
+                                .border(1.dp, keyBorder, RoundedCornerShape(10.dp))
+                                .clickable(
+                                    enabled = !isDone,
+                                    role = Role.Button,
+                                    onClick = { viewModel.enterDigit(digit) }
+                                )
+                                .testTag("sudoku_num_$digit"),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = digit.toString(),
+                                color = keyTextColor,
+                                fontFamily = JetBrainsMonoFontFamily,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = if (isLandscape) 18.sp else 22.sp
                             )
-                            .testTag("sudoku_num_$digit"),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.Center
-                    ) {
-                        Text(
-                            text = digit.toString(),
-                            color = keyTextColor,
-                            fontFamily = JetBrainsMonoFontFamily,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 18.sp
-                        )
-                        Text(
-                            text = remaining.toString(),
-                            color = colors.secondaryText.copy(alpha = if (isDone) 0.25f else 0.75f),
-                            fontFamily = JetBrainsMonoFontFamily,
-                            fontSize = 9.sp
-                        )
+                        }
                     }
+                }
+
+                // Tools Row: Undo, Erase, Notes
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally)
+                ) {
+                    ArcadePillButton(
+                        label = "Undo",
+                        selected = false,
+                        enabled = uiState.canUndo,
+                        isOledMode = uiState.isOledMode,
+                        onClick = { viewModel.undo() },
+                        modifier = Modifier.weight(1f),
+                        testTag = "sudoku_undo_button"
+                    )
+                    ArcadePillButton(
+                        label = "Erase",
+                        selected = false,
+                        isOledMode = uiState.isOledMode,
+                        onClick = { viewModel.eraseCell() },
+                        modifier = Modifier.weight(1f),
+                        testTag = "sudoku_erase_button"
+                    )
+                    ArcadePillButton(
+                        label = if (uiState.isNotesMode) "Notes ON" else "Notes",
+                        selected = uiState.isNotesMode,
+                        isOledMode = uiState.isOledMode,
+                        onClick = { viewModel.toggleNotesMode() },
+                        modifier = Modifier.weight(1f),
+                        testTag = "sudoku_notes_button"
+                    )
                 }
             }
         }
@@ -390,21 +434,12 @@ fun SudokuScreen(
 private fun SudokuBoardView(
     board: List<List<SudokuCell>>,
     selectedCell: Pair<Int, Int>?,
-    isOledMode: Boolean,
     isDark: Boolean,
     onCellClick: (Int, Int) -> Unit
 ) {
     val selectedValue = selectedCell?.let { (r, c) -> board[r][c].value } ?: 0
-    val thinLineColor = when {
-        isOledMode -> Color(0xFF2D3748)
-        isDark -> Color(0xFF475569)
-        else -> Color(0xFF94A3B8)
-    }
-    val thickLineColor = when {
-        isOledMode -> Color(0xFF64748B)
-        isDark -> Color(0xFF94A3B8)
-        else -> Color(0xFF334155)
-    }
+    val thinLineColor = if (isDark) Color(0xFF475569) else Color(0xFF94A3B8)
+    val thickLineColor = if (isDark) Color(0xFF94A3B8) else Color(0xFF334155)
     val boardShape = RoundedCornerShape(10.dp)
 
     BoxWithConstraints(
@@ -419,7 +454,7 @@ private fun SudokuBoardView(
             modifier = Modifier
                 .size(boardSide)
                 .clip(boardShape)
-                .background(if (isOledMode) Color.Black else if (isDark) Color(0xFF0F172A) else Color(0xFFE2E8F0))
+                .background(if (isDark) Color(0xFF0F172A) else Color(0xFFE2E8F0))
                 .drawWithContent {
                     drawContent()
                     val cellPx = size.width / 9f
@@ -453,26 +488,18 @@ private fun SudokuBoardView(
                             val isAltBox = ((r / 3) + (c / 3)) % 2 == 1
 
                             val cellBg = when {
-                                isSelected -> if (isOledMode) Color(0xFF1D4ED8).copy(alpha = 0.55f) else if (isDark) Color(0xFF1D4ED8).copy(alpha = 0.45f) else Color(0xFF93C5FD)
-                                cell.isError -> if (isOledMode) Color(0xFF7F1D1D).copy(alpha = 0.7f) else Color(0xFFEF4444).copy(alpha = 0.28f)
-                                isSameDigit -> if (isOledMode) Color(0xFF1E3A8A).copy(alpha = 0.55f) else if (isDark) Color(0xFF1E3A8A).copy(alpha = 0.5f) else Color(0xFFBFDBFE)
-                                isPeer -> if (isOledMode) Color(0xFF0F172A) else if (isDark) Color(0xFF283548) else Color(0xFFDFE7F1)
-                                isAltBox -> when {
-                                    isOledMode -> Color(0xFF0D0F14)
-                                    isDark -> Color(0xFF253042)
-                                    else -> Color(0xFFE9EFF6)
-                                }
-                                else -> when {
-                                    isOledMode -> Color.Black
-                                    isDark -> Color(0xFF1E293B)
-                                    else -> Color(0xFFF8FAFC)
-                                }
+                                isSelected -> if (isDark) Color(0xFF1D4ED8).copy(alpha = 0.45f) else Color(0xFF93C5FD)
+                                cell.isError -> Color(0xFFEF4444).copy(alpha = 0.28f)
+                                isSameDigit -> if (isDark) Color(0xFF1E3A8A).copy(alpha = 0.5f) else Color(0xFFBFDBFE)
+                                isPeer -> if (isDark) Color(0xFF283548) else Color(0xFFDFE7F1)
+                                isAltBox -> if (isDark) Color(0xFF253042) else Color(0xFFE9EFF6)
+                                else -> if (isDark) Color(0xFF1E293B) else Color(0xFFF8FAFC)
                             }
 
                             val textColor = when {
                                 cell.isError -> Color(0xFFEF4444)
-                                cell.isGiven -> if (isOledMode || isDark) Color.White else Color(0xFF0F172A)
-                                else -> if (isOledMode || isDark) Color(0xFF60A5FA) else Color(0xFF1D4ED8)
+                                cell.isGiven -> if (isDark) Color.White else Color(0xFF0F172A)
+                                else -> if (isDark) Color(0xFF60A5FA) else Color(0xFF1D4ED8)
                             }
 
                             val density = LocalDensity.current
@@ -501,7 +528,7 @@ private fun SudokuBoardView(
                                         textAlign = TextAlign.Center
                                     )
                                 } else if (cell.notes.isNotEmpty()) {
-                                    val noteColor = if (isOledMode || isDark) Color(0xFF94A3B8) else Color(0xFF475569)
+                                    val noteColor = if (isDark) Color(0xFF94A3B8) else Color(0xFF475569)
                                     Column(
                                         modifier = Modifier
                                             .fillMaxSize()

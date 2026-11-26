@@ -64,7 +64,6 @@ import com.example.minesweeper.data.DailyStreak
 import com.example.minesweeper.haptic.HapticManager
 import com.example.minesweeper.ui.components.DailyStreakBadge
 import com.example.minesweeper.ui.components.DailyStreakDialog
-import com.example.minesweeper.ui.components.DigitalCounter
 import com.example.minesweeper.ui.components.HapticSettingsDialog
 import com.example.ui.theme.JetBrainsMonoFontFamily
 import com.example.ui.theme.LocalIsDarkTheme
@@ -230,15 +229,31 @@ fun StartScreen(
                     horizontalArrangement = Arrangement.spacedBy(10.dp),
                     verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    // Signature Minesweeper LED summary strip across top
+                    // Daily Wins summary strip across top
                     item(span = { GridItemSpan(columns) }) {
+                        val totalGames = games.size
+                        val allCompleted = totalGames > 0 && completedTodayCount >= totalGames
+                        val counterBg = when {
+                            allCompleted -> Color(0xFF16A34A).copy(alpha = if (isDark) 0.18f else 0.12f)
+                            else -> colors.pillInactiveBg
+                        }
+                        val counterBorder = when {
+                            allCompleted -> Color(0xFF16A34A).copy(alpha = if (isDark) 0.5f else 0.35f)
+                            else -> colors.cardBorder
+                        }
+                        val counterTextColor = when {
+                            allCompleted -> if (isDark) Color(0xFF4ADE80) else Color(0xFF15803D)
+                            completedTodayCount > 0 -> if (isDark) Color(0xFF60A5FA) else Color(0xFF1D4ED8)
+                            else -> colors.primaryText
+                        }
+
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .clip(RoundedCornerShape(10.dp))
                                 .background(colors.cardBackground)
                                 .border(1.dp, colors.cardBorder, RoundedCornerShape(10.dp))
-                                .padding(horizontal = 14.dp, vertical = 10.dp),
+                                .padding(horizontal = 14.dp, vertical = 12.dp),
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
@@ -250,14 +265,21 @@ fun StartScreen(
                                 color = colors.primaryText
                             )
 
-                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                DigitalCounter(value = completedTodayCount, testTag = "home_today_counter")
+                            Box(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .background(counterBg)
+                                    .border(1.dp, counterBorder, RoundedCornerShape(8.dp))
+                                    .padding(horizontal = 12.dp, vertical = 6.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
                                 Text(
-                                    text = "TODAY / 4",
-                                    fontSize = 9.sp,
+                                    text = "$completedTodayCount / $totalGames",
+                                    fontSize = 16.sp,
+                                    fontWeight = FontWeight.Bold,
                                     fontFamily = JetBrainsMonoFontFamily,
-                                    color = colors.secondaryText,
-                                    modifier = Modifier.padding(top = 2.dp)
+                                    color = counterTextColor,
+                                    modifier = Modifier.testTag("home_today_counter")
                                 )
                             }
                         }

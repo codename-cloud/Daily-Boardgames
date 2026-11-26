@@ -20,6 +20,7 @@ import kotlinx.coroutines.launch
 
 data class FreeCellUiState(
     val game: FreeCellGameState = FreeCellEngine.newDeal(1),
+    val dealGeneration: Int = 0,
     val status: GameStatus = GameStatus.READY,
     val timerSeconds: Int = 0,
     val selection: FreeCellSelection? = null,
@@ -90,6 +91,7 @@ class FreeCellViewModel(application: Application) : AndroidViewModel(application
         _uiState.update {
             it.copy(
                 game = initialDeal,
+                dealGeneration = it.dealGeneration + 1,
                 status = GameStatus.READY,
                 timerSeconds = 0,
                 selection = null,
@@ -110,6 +112,7 @@ class FreeCellViewModel(application: Application) : AndroidViewModel(application
         _uiState.update {
             it.copy(
                 game = initialDeal,
+                dealGeneration = it.dealGeneration + 1,
                 status = GameStatus.READY,
                 timerSeconds = 0,
                 selection = null,

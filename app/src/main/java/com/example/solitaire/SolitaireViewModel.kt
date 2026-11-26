@@ -20,6 +20,7 @@ import kotlinx.coroutines.launch
 
 data class SolitaireUiState(
     val game: SolitaireGameState = SolitaireEngine.newDeal(),
+    val dealGeneration: Int = 0,
     val status: GameStatus = GameStatus.READY,
     val timerSeconds: Int = 0,
     val selection: SolitaireSelection? = null,
@@ -91,6 +92,7 @@ class SolitaireViewModel(application: Application) : AndroidViewModel(applicatio
         _uiState.update {
             it.copy(
                 game = initialDeal,
+                dealGeneration = it.dealGeneration + 1,
                 status = GameStatus.READY,
                 timerSeconds = 0,
                 selection = null,
@@ -113,6 +115,7 @@ class SolitaireViewModel(application: Application) : AndroidViewModel(applicatio
         _uiState.update {
             it.copy(
                 game = initialDeal,
+                dealGeneration = it.dealGeneration + 1,
                 status = GameStatus.READY,
                 timerSeconds = 0,
                 selection = null,

@@ -1,5 +1,8 @@
 package com.example.cards
 
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -19,6 +22,7 @@ import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -62,12 +66,22 @@ fun PlayingCardView(
     val faceBg = Color.White
     val backBg = Color(0xFF1E3A8A)
 
-    val borderColor = when {
+    val targetBorderColor = when {
         isSelected -> CardSelectedGold
         isHinted -> Color(0xFF38BDF8)
         card.isFaceUp -> Color(0xFF334155)
         else -> Color(0xFF60A5FA).copy(alpha = 0.55f)
     }
+    val borderColor by animateColorAsState(
+        targetValue = targetBorderColor,
+        animationSpec = tween(durationMillis = 150),
+        label = "card_border_color"
+    )
+    val shadowElevation by animateDpAsState(
+        targetValue = if (isSelected) 8.dp else if (isOledMode) 0.dp else 2.dp,
+        animationSpec = tween(durationMillis = 150),
+        label = "card_shadow_elevation"
+    )
     val borderWidth = if (isSelected || isHinted) 2.dp else 1.dp
 
     val cardDescription = if (card.isFaceUp) {
@@ -80,7 +94,7 @@ fun PlayingCardView(
         modifier = modifier
             .aspectRatio(0.70f)
             .shadow(
-                elevation = if (isSelected) 8.dp else if (isOledMode) 0.dp else 2.dp,
+                elevation = shadowElevation,
                 shape = shape,
                 ambientColor = Color.Black.copy(alpha = 0.35f),
                 spotColor = Color.Black.copy(alpha = 0.35f)

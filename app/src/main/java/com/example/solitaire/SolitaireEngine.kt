@@ -3,10 +3,11 @@ package com.example.solitaire
 import com.example.cards.PlayingCard
 import com.example.cards.Rank
 import com.example.cards.createStandardDeck
+import kotlin.random.Random
 
 object SolitaireEngine {
 
-    fun newDeal(drawMode: SolitaireDrawMode = SolitaireDrawMode.DRAW_1, seed: Long? = null): SolitaireGameState {
+    private fun dealFromSeed(drawMode: SolitaireDrawMode, seed: Long?): SolitaireGameState {
         val deck = createStandardDeck(seed = seed, faceUp = false)
         val tableau = MutableList(7) { mutableListOf<PlayingCard>() }
         var cursor = 0
@@ -28,6 +29,25 @@ object SolitaireEngine {
             moves = 0,
             score = 0
         )
+    }
+
+    fun newDeal(drawMode: SolitaireDrawMode = SolitaireDrawMode.DRAW_1, seed: Long? = null): SolitaireGameState {
+        val baseSeed = seed ?: Random.nextLong()
+        val maxAttempts = if (drawMode == SolitaireDrawMode.DRAW_3) 120 else 60
+        for (attempt in 0 until maxAttempts) {
+            val candidateSeed = baseSeed + attempt * 7919L
+            val deal = dealFromSeed(drawMode, candidateSeed)
+            if (SolitaireSolver.isWinnable(deal)) {
+                return deal
+            }
+        }
+        for (fallbackSeed in 1L..500L) {
+            val deal = dealFromSeed(drawMode, fallbackSeed)
+            if (SolitaireSolver.isWinnable(deal)) {
+                return deal
+            }
+        }
+        return dealFromSeed(drawMode, baseSeed)
     }
 
     fun drawFromStock(state: SolitaireGameState): SolitaireGameState? {

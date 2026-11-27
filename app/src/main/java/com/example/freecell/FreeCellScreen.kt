@@ -102,7 +102,7 @@ fun FreeCellScreen(
                 .displayCutoutPadding()
         ) {
             ArcadeGameHUD(
-                title = "FreeCell #${game.dealNumber}",
+                title = "FreeCell",
                 leftCounterValue = game.moves,
                 leftCounterTag = "freecell_moves_counter",
                 timerSeconds = uiState.timerSeconds,

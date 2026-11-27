@@ -6,7 +6,7 @@ import kotlin.random.Random
 
 object FreeCellEngine {
 
-    fun newDeal(dealNumber: Int = Random.nextInt(1, 100_000)): FreeCellGameState {
+    private fun dealFromSeed(dealNumber: Int): FreeCellGameState {
         val deck = createStandardDeck(seed = dealNumber.toLong(), faceUp = true)
         val tableau = MutableList(8) { mutableListOf<PlayingCard>() }
         deck.forEachIndexed { idx, card ->
@@ -19,6 +19,18 @@ object FreeCellEngine {
             tableau = tableau.map { it.toList() },
             moves = 0
         )
+    }
+
+    fun newDeal(dealNumber: Int = Random.nextInt(1, 100_000)): FreeCellGameState {
+        val base = ((dealNumber - 1).mod(99_999)) + 1
+        for (attempt in 0 until 64) {
+            val candidateNumber = ((base - 1 + attempt).mod(99_999)) + 1
+            val deal = dealFromSeed(candidateNumber)
+            if (FreeCellSolver.isWinnable(deal)) {
+                return deal
+            }
+        }
+        return dealFromSeed(1)
     }
 
     fun isOrderedRun(pile: List<PlayingCard>, startIndex: Int): Boolean {

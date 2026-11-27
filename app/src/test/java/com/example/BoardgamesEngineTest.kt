@@ -5,9 +5,11 @@ import com.example.cards.Rank
 import com.example.cards.Suit
 import com.example.freecell.FreeCellEngine
 import com.example.freecell.FreeCellGameState
+import com.example.freecell.FreeCellSolver
 import com.example.solitaire.SolitaireDrawMode
 import com.example.solitaire.SolitaireEngine
 import com.example.solitaire.SolitaireGameState
+import com.example.solitaire.SolitaireSolver
 import com.example.sudoku.SudokuDifficulty
 import com.example.sudoku.SudokuGenerator
 import org.junit.Assert.assertEquals
@@ -122,5 +124,33 @@ class BoardgamesEngineTest {
                 assertEquals(9, colVals.size)
             }
         }
+    }
+
+    @Test
+    fun testAllGeneratedSolitaireDealsAreWinnable() {
+        val startMs = System.currentTimeMillis()
+        for (seed in 1L..25L) {
+            val draw1 = SolitaireEngine.newDeal(SolitaireDrawMode.DRAW_1, seed = seed)
+            assertEquals(52, draw1.stock.size + draw1.tableau.sumOf { it.size })
+            assertTrue("Draw-1 deal for seed $seed should be winnable", SolitaireSolver.isWinnable(draw1))
+
+            val draw3 = SolitaireEngine.newDeal(SolitaireDrawMode.DRAW_3, seed = seed)
+            assertEquals(52, draw3.stock.size + draw3.tableau.sumOf { it.size })
+            assertTrue("Draw-3 deal for seed $seed should be winnable", SolitaireSolver.isWinnable(draw3))
+        }
+        val elapsed = System.currentTimeMillis() - startMs
+        println("Generated and verified 50 Solitaire deals (25 Draw-1 + 25 Draw-3) in ${elapsed}ms")
+    }
+
+    @Test
+    fun testAllGeneratedFreeCellDealsAreWinnable() {
+        val startMs = System.currentTimeMillis()
+        for (dealNum in 1..25) {
+            val deal = FreeCellEngine.newDeal(dealNumber = dealNum)
+            assertEquals(52, deal.tableau.sumOf { it.size })
+            assertTrue("FreeCell deal #${deal.dealNumber} should be winnable", FreeCellSolver.isWinnable(deal))
+        }
+        val elapsed = System.currentTimeMillis() - startMs
+        println("Generated and verified 25 FreeCell deals in ${elapsed}ms")
     }
 }

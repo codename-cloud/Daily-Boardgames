@@ -19,7 +19,7 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
 data class FreeCellUiState(
-    val game: FreeCellGameState = FreeCellEngine.newDeal(1),
+    val game: FreeCellGameState = FreeCellGameState(),
     val dealGeneration: Int = 0,
     val status: GameStatus = GameStatus.READY,
     val timerSeconds: Int = 0,
@@ -44,7 +44,7 @@ class FreeCellViewModel(application: Application) : AndroidViewModel(application
     private val hapticManager = HapticManager(application)
 
     private val undoStack = mutableListOf<FreeCellGameState>()
-    private var initialDeal: FreeCellGameState = FreeCellEngine.newDeal()
+    private var initialDeal: FreeCellGameState = FreeCellGameState()
     private var timerJob: Job? = null
     private var autoFoundationJob: Job? = null
     private var currentGameRecorded = false

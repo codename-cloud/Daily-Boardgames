@@ -19,7 +19,7 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
 data class SolitaireUiState(
-    val game: SolitaireGameState = SolitaireEngine.newDeal(),
+    val game: SolitaireGameState = SolitaireGameState(),
     val dealGeneration: Int = 0,
     val status: GameStatus = GameStatus.READY,
     val timerSeconds: Int = 0,
@@ -45,7 +45,7 @@ class SolitaireViewModel(application: Application) : AndroidViewModel(applicatio
     private val hapticManager = HapticManager(application)
 
     private val undoStack = mutableListOf<SolitaireGameState>()
-    private var initialDeal: SolitaireGameState = SolitaireEngine.newDeal()
+    private var initialDeal: SolitaireGameState = SolitaireGameState()
     private var timerJob: Job? = null
     private var autoCompleteJob: Job? = null
     private var currentGameRecorded = false

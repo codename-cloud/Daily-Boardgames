@@ -7,6 +7,8 @@ import com.example.common.AppSettingsStore
 import com.example.common.ChangelogEntry
 import com.example.common.GitHubApiParser
 import com.example.common.GitHubBuildInfo
+import com.example.common.VersionChangelog
+import com.example.common.buildPendingUpdateInfo
 import com.example.common.formatFriendlyChangelog
 import com.example.common.formatStructuredChangelog
 import com.example.common.isRemoteBuildNewer
@@ -211,6 +213,82 @@ class GitHubUpdaterTest {
                 ChangelogEntry("Throttle rapid tones during auto-clear", indentLevel = 1)
             ),
             formatStructuredChangelog(commitMessage, isCommitMessage = true)
+        )
+    }
+
+    @Test
+    fun testBuildPendingUpdateInfoAggregatesChangelogsBetweenInstalledAndLatest() {
+        val json = """
+            [
+              {
+                "tag_name": "build-22",
+                "name": "Daily Boardgames v11.22 (Build #22)",
+                "body": "### What's New in Build #22\n- Indent changelog explanation bullets\n  - Update workflow and app UI",
+                "html_url": "https://github.com/kody/daily-boardgames/releases/tag/build-22",
+                "published_at": "2026-11-27T10:00:00Z",
+                "draft": false,
+                "prerelease": false,
+                "assets": [
+                  {
+                    "name": "daily-boardgames.apk",
+                    "browser_download_url": "https://github.com/kody/daily-boardgames/releases/download/build-22/daily-boardgames.apk"
+                  }
+                ]
+              },
+              {
+                "tag_name": "build-21",
+                "name": "Daily Boardgames v11.21 (Build #21)",
+                "body": "### What's New in Build #21\n- Optimize audio and haptic performance",
+                "html_url": "https://github.com/kody/daily-boardgames/releases/tag/build-21",
+                "published_at": "2026-11-27T09:00:00Z",
+                "draft": false,
+                "prerelease": false,
+                "assets": []
+              },
+              {
+                "tag_name": "build-20",
+                "name": "Daily Boardgames v11.20 (Build #20)",
+                "body": "### What's New in Build #20\n- Fix DailyStreakDialog landscape clipping",
+                "html_url": "https://github.com/kody/daily-boardgames/releases/tag/build-20",
+                "published_at": "2026-11-27T08:00:00Z",
+                "draft": false,
+                "prerelease": false,
+                "assets": []
+              }
+            ]
+        """.trimIndent()
+
+        val builds = GitHubApiParser.parseReleases("kody/daily-boardgames", json)
+        val pending = buildPendingUpdateInfo(
+            builds = builds,
+            localVersionCode = 31,
+            localVersionName = "11.20",
+            localRunNumber = 20L,
+            localCommitSha = ""
+        )
+
+        assertNotNull(pending)
+        requireNotNull(pending)
+        assertEquals("v11.22", pending.tagOrVersion)
+        assertEquals(
+            listOf(
+                VersionChangelog(
+                    versionLabel = "v11.22",
+                    title = "Daily Boardgames v11.22 (Build #22)",
+                    entries = listOf(
+                        ChangelogEntry("Indent changelog explanation bullets", indentLevel = 0),
+                        ChangelogEntry("Update workflow and app UI", indentLevel = 1)
+                    )
+                ),
+                VersionChangelog(
+                    versionLabel = "v11.21",
+                    title = "Daily Boardgames v11.21 (Build #21)",
+                    entries = listOf(
+                        ChangelogEntry("Optimize audio and haptic performance", indentLevel = 0)
+                    )
+                )
+            ),
+            pending.releaseChangelogs
         )
     }
 

@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
@@ -26,6 +27,7 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -48,6 +50,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.example.BuildConfig
 import com.example.ui.theme.JetBrainsMonoFontFamily
 import com.example.ui.theme.OutfitFontFamily
 
@@ -86,21 +89,13 @@ fun GitHubUpdateDialog(
                         modifier = Modifier.size(18.dp)
                     )
                 }
-                Column {
-                    Text(
-                        text = "GitHub Updates",
-                        fontFamily = OutfitFontFamily,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 19.sp,
-                        color = colors.primaryText
-                    )
-                    Text(
-                        text = GitHubUpdateManager.currentVersionSummary(),
-                        fontFamily = JetBrainsMonoFontFamily,
-                        fontSize = 10.5.sp,
-                        color = colors.secondaryText
-                    )
-                }
+                Text(
+                    text = "GitHub Updates",
+                    fontFamily = OutfitFontFamily,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 19.sp,
+                    color = colors.primaryText
+                )
             }
         },
         text = {
@@ -112,20 +107,20 @@ fun GitHubUpdateDialog(
                 verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 OutlinedTextField(
-                    value = configuredRepo.ifBlank { "Configured automatically by GitHub Actions" },
+                    value = "v${BuildConfig.VERSION_NAME}",
                     onValueChange = {},
                     readOnly = true,
                     enabled = false,
-                    label = { Text("GitHub Repository") },
+                    label = { Text("Installed Build") },
                     singleLine = true,
                     colors = OutlinedTextFieldDefaults.colors(
-                        disabledTextColor = if (configuredRepo.isNotBlank()) colors.primaryText else colors.secondaryText,
+                        disabledTextColor = colors.primaryText,
                         disabledBorderColor = colors.cardBorder,
                         disabledLabelColor = colors.secondaryText
                     ),
                     modifier = Modifier
                         .fillMaxWidth()
-                        .testTag("github_repo_input")
+                        .testTag("installed_build_field")
                 )
 
                 Button(
@@ -264,32 +259,38 @@ fun GitHubUpdateDialog(
                                         tint = Color(0xFF60A5FA),
                                         modifier = Modifier.size(20.dp)
                                     )
-                                    Column {
-                                        Text(
-                                            text = "New Build Available: ${build.tagOrVersion}",
-                                            fontWeight = FontWeight.Bold,
-                                            fontSize = 14.sp,
-                                            color = colors.primaryText
-                                        )
-                                        Text(
-                                            text = build.title,
-                                            fontSize = 12.sp,
-                                            color = colors.secondaryText
-                                        )
-                                    }
+                                    Text(
+                                        text = "New Build Available: ${build.tagOrVersion}",
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 14.sp,
+                                        color = colors.primaryText
+                                    )
                                 }
 
-                                val displayItems = build.changelogEntries.ifEmpty {
-                                    build.changelogItems.map { ChangelogEntry(it) }.ifEmpty {
-                                        build.notes.takeIf { it.isNotBlank() }
-                                            ?.let { listOf(ChangelogEntry(it)) }
-                                            .orEmpty()
+                                val versionChangelogs = build.releaseChangelogs.ifEmpty {
+                                    val fallbackEntries = build.changelogEntries.ifEmpty {
+                                        build.changelogItems.map { ChangelogEntry(it) }.ifEmpty {
+                                            build.notes.takeIf { it.isNotBlank() }
+                                                ?.let { listOf(ChangelogEntry(it)) }
+                                                .orEmpty()
+                                        }
+                                    }
+                                    if (fallbackEntries.isEmpty()) {
+                                        emptyList()
+                                    } else {
+                                        listOf(
+                                            VersionChangelog(
+                                                versionLabel = build.tagOrVersion,
+                                                title = build.title,
+                                                entries = fallbackEntries
+                                            )
+                                        )
                                     }
                                 }
-                                if (displayItems.isNotEmpty()) {
-                                    ChangelogListSection(
+                                if (versionChangelogs.isNotEmpty()) {
+                                    MultiVersionChangelogSection(
                                         heading = "What's New",
-                                        items = displayItems,
+                                        changelogs = versionChangelogs,
                                         colors = colors,
                                         isOledMode = isOledMode
                                     )
@@ -412,6 +413,22 @@ private fun ChangelogListSection(
     colors: ArcadeThemeColors,
     isOledMode: Boolean
 ) {
+    MultiVersionChangelogSection(
+        heading = heading,
+        changelogs = listOf(VersionChangelog(versionLabel = "", title = "", entries = items)),
+        colors = colors,
+        isOledMode = isOledMode
+    )
+}
+
+@Composable
+private fun MultiVersionChangelogSection(
+    heading: String,
+    changelogs: List<VersionChangelog>,
+    colors: ArcadeThemeColors,
+    isOledMode: Boolean
+) {
+    val showVersionHeaders = changelogs.size > 1
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -420,34 +437,95 @@ private fun ChangelogListSection(
             .border(1.dp, colors.cardBorder, RoundedCornerShape(8.dp))
             .padding(horizontal = 10.dp, vertical = 8.dp)
             .testTag("github_update_changelog"),
-        verticalArrangement = Arrangement.spacedBy(4.dp)
+        verticalArrangement = Arrangement.spacedBy(6.dp)
     ) {
-        Text(
-            text = heading,
-            fontFamily = OutfitFontFamily,
-            fontWeight = FontWeight.SemiBold,
-            fontSize = 12.sp,
-            color = colors.primaryText
-        )
-        items.forEach { entry ->
-            val isSubBullet = entry.indentLevel > 0
-            Row(
-                modifier = Modifier.padding(start = if (isSubBullet) 16.dp else 0.dp),
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
-                verticalAlignment = Alignment.Top
-            ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = heading,
+                fontFamily = OutfitFontFamily,
+                fontWeight = FontWeight.SemiBold,
+                fontSize = 12.sp,
+                color = colors.primaryText
+            )
+            if (showVersionHeaders) {
                 Text(
-                    text = if (isSubBullet) "◦" else "•",
-                    fontSize = if (isSubBullet) 11.5.sp else 12.5.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = if (isSubBullet) Color(0xFF60A5FA).copy(alpha = 0.75f) else Color(0xFF60A5FA)
+                    text = "${changelogs.size} releases",
+                    fontFamily = JetBrainsMonoFontFamily,
+                    fontSize = 10.sp,
+                    color = Color(0xFF60A5FA)
                 )
-                Text(
-                    text = entry.text,
-                    fontSize = if (isSubBullet) 11.5.sp else 12.sp,
-                    lineHeight = if (isSubBullet) 16.5.sp else 17.sp,
-                    color = if (isSubBullet) colors.secondaryText else colors.primaryText.copy(alpha = 0.9f)
-                )
+            }
+        }
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(max = 260.dp)
+                .verticalScroll(rememberScrollState()),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            changelogs.forEachIndexed { index, release ->
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    if (showVersionHeaders && release.versionLabel.isNotBlank()) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(4.dp))
+                                    .background(Color(0xFF2563EB).copy(alpha = if (index == 0) 0.24f else 0.14f))
+                                    .padding(horizontal = 6.dp, vertical = 2.dp)
+                            ) {
+                                Text(
+                                    text = release.versionLabel,
+                                    fontFamily = JetBrainsMonoFontFamily,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 10.5.sp,
+                                    color = Color(0xFF60A5FA)
+                                )
+                            }
+                            if (index == 0) {
+                                Text(
+                                    text = "Newest",
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = Color(0xFF22C55E)
+                                )
+                            }
+                        }
+                    }
+                    release.entries.forEach { entry ->
+                        val isSubBullet = entry.indentLevel > 0
+                        Row(
+                            modifier = Modifier.padding(start = if (isSubBullet) 16.dp else 0.dp),
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            verticalAlignment = Alignment.Top
+                        ) {
+                            Text(
+                                text = if (isSubBullet) "◦" else "•",
+                                fontSize = if (isSubBullet) 11.5.sp else 12.5.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = if (isSubBullet) Color(0xFF60A5FA).copy(alpha = 0.75f) else Color(0xFF60A5FA)
+                            )
+                            Text(
+                                text = entry.text,
+                                fontSize = if (isSubBullet) 11.5.sp else 12.sp,
+                                lineHeight = if (isSubBullet) 16.5.sp else 17.sp,
+                                color = if (isSubBullet) colors.secondaryText else colors.primaryText.copy(alpha = 0.9f)
+                            )
+                        }
+                    }
+                }
+                if (index < changelogs.lastIndex) {
+                    HorizontalDivider(
+                        thickness = 1.dp,
+                        color = colors.cardBorder.copy(alpha = 0.65f)
+                    )
+                }
             }
         }
     }

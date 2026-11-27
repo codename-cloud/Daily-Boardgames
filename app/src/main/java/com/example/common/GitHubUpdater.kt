@@ -8,6 +8,7 @@ import android.net.Uri
 import com.example.BuildConfig
 import com.squareup.moshi.Json
 import com.squareup.moshi.Moshi
+import com.squareup.moshi.Types
 import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -27,6 +28,12 @@ data class ChangelogEntry(
     val indentLevel: Int = 0
 )
 
+data class VersionChangelog(
+    val versionLabel: String,
+    val title: String,
+    val entries: List<ChangelogEntry>
+)
+
 data class GitHubBuildInfo(
     val repo: String,
     val source: Source,
@@ -38,6 +45,7 @@ data class GitHubBuildInfo(
     val notes: String,
     val changelogItems: List<String> = emptyList(),
     val changelogEntries: List<ChangelogEntry> = changelogItems.map { ChangelogEntry(it) },
+    val releaseChangelogs: List<VersionChangelog> = emptyList(),
     val publishedAt: String,
     val browserUrl: String,
     val apkDownloadUrl: String?
@@ -305,16 +313,76 @@ internal fun isRemoteBuildNewer(
     return false
 }
 
+internal fun isVersionStrictlyNewer(
+    remote: GitHubBuildInfo,
+    localVersionCode: Int,
+    localVersionName: String,
+    localRunNumber: Long
+): Boolean {
+    val remoteRun = remote.runNumber
+    if (remoteRun != null && localRunNumber > 0L) {
+        return remoteRun > localRunNumber
+    }
+
+    val remoteCode = remote.versionCode
+    if (remoteCode != null && remoteCode != localVersionCode) {
+        return remoteCode > localVersionCode
+    }
+
+    return compareVersionStrings(remote.tagOrVersion, localVersionName) > 0
+}
+
+internal fun buildPendingUpdateInfo(
+    builds: List<GitHubBuildInfo>,
+    localVersionCode: Int,
+    localVersionName: String,
+    localRunNumber: Long,
+    localCommitSha: String
+): GitHubBuildInfo? {
+    val latest = builds.firstOrNull() ?: return null
+    if (!isRemoteBuildNewer(latest, localVersionCode, localVersionName, localRunNumber, localCommitSha)) {
+        return null
+    }
+
+    val newerBuilds = builds.filter {
+        isVersionStrictlyNewer(
+            remote = it,
+            localVersionCode = localVersionCode,
+            localVersionName = localVersionName,
+            localRunNumber = localRunNumber
+        )
+    }.ifEmpty { listOf(latest) }
+
+    val combinedChangelogs = newerBuilds.mapNotNull { build ->
+        val entries = build.changelogEntries.ifEmpty {
+            build.notes.takeIf { it.isNotBlank() }?.let { listOf(ChangelogEntry(it)) }.orEmpty()
+        }
+        if (entries.isEmpty()) {
+            null
+        } else {
+            VersionChangelog(
+                versionLabel = build.tagOrVersion,
+                title = build.title,
+                entries = entries
+            )
+        }
+    }
+
+    return latest.copy(releaseChangelogs = combinedChangelogs)
+}
+
 internal object GitHubApiParser {
     private val moshi = Moshi.Builder()
         .addLast(KotlinJsonAdapterFactory())
         .build()
 
     private val releaseAdapter = moshi.adapter(GitHubReleaseDto::class.java)
+    private val releaseListAdapter = moshi.adapter<List<GitHubReleaseDto>>(
+        Types.newParameterizedType(List::class.java, GitHubReleaseDto::class.java)
+    )
     private val workflowRunsAdapter = moshi.adapter(GitHubWorkflowRunsResponseDto::class.java)
 
-    fun parseRelease(repo: String, json: String): GitHubBuildInfo? {
-        val dto = releaseAdapter.fromJson(json) ?: return null
+    private fun toBuildInfo(repo: String, dto: GitHubReleaseDto): GitHubBuildInfo? {
         if (dto.draft) return null
         val tag = dto.tagName?.takeIf { it.isNotBlank() } ?: return null
         val htmlUrl = dto.htmlUrl?.takeIf { it.isNotBlank() } ?: return null
@@ -333,55 +401,94 @@ internal object GitHubApiParser {
 
         val bodyText = dto.body?.trim().orEmpty()
         val changelogEntries = formatStructuredChangelog(bodyText, isCommitMessage = false)
+        val tagOrVersion = if (tag.startsWith("build-", ignoreCase = true) && runNumber != null) {
+            "v11.$runNumber"
+        } else {
+            tag
+        }
+        val title = dto.name?.takeIf { it.isNotBlank() } ?: tag
 
         return GitHubBuildInfo(
             repo = repo,
             source = GitHubBuildInfo.Source.RELEASE,
-            title = dto.name?.takeIf { it.isNotBlank() } ?: tag,
-            tagOrVersion = if (tag.startsWith("build-", ignoreCase = true) && runNumber != null) {
-                "v11.$runNumber"
-            } else {
-                tag
-            },
+            title = title,
+            tagOrVersion = tagOrVersion,
             runNumber = runNumber,
             versionCode = derivedVersionCode,
             commitSha = shaMatch?.groupValues?.get(1),
             notes = bodyText,
             changelogItems = changelogEntries.map { it.text },
             changelogEntries = changelogEntries,
+            releaseChangelogs = if (changelogEntries.isNotEmpty()) {
+                listOf(VersionChangelog(versionLabel = tagOrVersion, title = title, entries = changelogEntries))
+            } else {
+                emptyList()
+            },
             publishedAt = dto.publishedAt.orEmpty(),
             browserUrl = htmlUrl,
             apkDownloadUrl = apkUrl
         )
     }
 
-    fun parseLatestSuccessfulWorkflowRun(repo: String, json: String): GitHubBuildInfo? {
-        val dto = workflowRunsAdapter.fromJson(json) ?: return null
-        val run = dto.workflowRuns.firstOrNull {
-            it.conclusion == null || it.conclusion.equals("success", ignoreCase = true)
-        } ?: return null
-        val htmlUrl = run.htmlUrl?.takeIf { it.isNotBlank() } ?: return null
-        val commitMessage = run.headCommit?.message?.takeIf { it.isNotBlank() }
-            ?: run.displayTitle?.takeIf { it.isNotBlank() }
-            ?: ""
-        val changelogEntries = formatStructuredChangelog(commitMessage, isCommitMessage = true)
-        return GitHubBuildInfo(
-            repo = repo,
-            source = GitHubBuildInfo.Source.WORKFLOW_RUN,
-            title = run.displayTitle?.takeIf { it.isNotBlank() }
-                ?: run.name?.takeIf { it.isNotBlank() }
-                ?: "Workflow Build #${run.runNumber}",
-            tagOrVersion = "Build #${run.runNumber}",
-            runNumber = run.runNumber,
-            versionCode = if (run.runNumber > 0L) (11L + run.runNumber).toInt() else null,
-            commitSha = run.headSha,
-            notes = commitMessage.ifBlank { "Built by GitHub Actions workflow run #${run.runNumber}." },
-            changelogItems = changelogEntries.map { it.text },
-            changelogEntries = changelogEntries,
-            publishedAt = run.updatedAt.orEmpty(),
-            browserUrl = htmlUrl,
-            apkDownloadUrl = null
-        )
+    fun parseRelease(repo: String, json: String): GitHubBuildInfo? {
+        val dto = releaseAdapter.fromJson(json) ?: return null
+        return toBuildInfo(repo, dto)
+    }
+
+    fun parseReleases(repo: String, json: String): List<GitHubBuildInfo> {
+        val dtos = releaseListAdapter.fromJson(json).orEmpty().filter { !it.draft }
+        if (dtos.isEmpty()) return emptyList()
+        val preferredDtos = dtos.filter { !it.prerelease }.ifEmpty { dtos }
+        return preferredDtos
+            .mapNotNull { toBuildInfo(repo, it) }
+            .sortedWith(
+                compareByDescending<GitHubBuildInfo> { it.runNumber ?: -1L }
+                    .thenByDescending { it.versionCode ?: -1 }
+                    .thenByDescending { it.publishedAt }
+            )
+    }
+
+    fun parseLatestSuccessfulWorkflowRun(repo: String, json: String): GitHubBuildInfo? =
+        parseSuccessfulWorkflowRuns(repo, json).firstOrNull()
+
+    fun parseSuccessfulWorkflowRuns(repo: String, json: String): List<GitHubBuildInfo> {
+        val dto = workflowRunsAdapter.fromJson(json) ?: return emptyList()
+        val seenRuns = mutableSetOf<Long>()
+        return dto.workflowRuns
+            .filter { it.conclusion == null || it.conclusion.equals("success", ignoreCase = true) }
+            .mapNotNull { run ->
+                val htmlUrl = run.htmlUrl?.takeIf { it.isNotBlank() } ?: return@mapNotNull null
+                if (!seenRuns.add(run.runNumber)) return@mapNotNull null
+                val commitMessage = run.headCommit?.message?.takeIf { it.isNotBlank() }
+                    ?: run.displayTitle?.takeIf { it.isNotBlank() }
+                    ?: ""
+                val changelogEntries = formatStructuredChangelog(commitMessage, isCommitMessage = true)
+                val tagOrVersion = "Build #${run.runNumber}"
+                val title = run.displayTitle?.takeIf { it.isNotBlank() }
+                    ?: run.name?.takeIf { it.isNotBlank() }
+                    ?: "Workflow Build #${run.runNumber}"
+                GitHubBuildInfo(
+                    repo = repo,
+                    source = GitHubBuildInfo.Source.WORKFLOW_RUN,
+                    title = title,
+                    tagOrVersion = tagOrVersion,
+                    runNumber = run.runNumber,
+                    versionCode = if (run.runNumber > 0L) (11L + run.runNumber).toInt() else null,
+                    commitSha = run.headSha,
+                    notes = commitMessage.ifBlank { "Built by GitHub Actions workflow run #${run.runNumber}." },
+                    changelogItems = changelogEntries.map { it.text },
+                    changelogEntries = changelogEntries,
+                    releaseChangelogs = if (changelogEntries.isNotEmpty()) {
+                        listOf(VersionChangelog(versionLabel = tagOrVersion, title = title, entries = changelogEntries))
+                    } else {
+                        emptyList()
+                    },
+                    publishedAt = run.updatedAt.orEmpty(),
+                    browserUrl = htmlUrl,
+                    apkDownloadUrl = null
+                )
+            }
+            .sortedByDescending { it.runNumber ?: -1L }
     }
 }
 
@@ -445,22 +552,22 @@ object GitHubUpdateManager {
 
     private fun fetchCheckResult(repo: String): GitHubCheckStatus {
         return try {
-            val releaseBuild = fetchLatestRelease(repo)
-            val latestBuild = releaseBuild ?: fetchLatestWorkflowRun(repo)
+            val builds = fetchReleases(repo).ifEmpty { fetchWorkflowRuns(repo) }
+            val latestBuild = builds.firstOrNull()
                 ?: return GitHubCheckStatus.Error(
                     "No GitHub Releases or completed APK workflow runs found for $repo."
                 )
 
-            val isNewer = isRemoteBuildNewer(
-                remote = latestBuild,
+            val pendingUpdate = buildPendingUpdateInfo(
+                builds = builds,
                 localVersionCode = BuildConfig.VERSION_CODE,
                 localVersionName = BuildConfig.VERSION_NAME,
                 localRunNumber = BuildConfig.CI_RUN_NUMBER,
                 localCommitSha = BuildConfig.CI_COMMIT_SHA
             )
 
-            if (isNewer) {
-                GitHubCheckStatus.UpdateAvailable(latestBuild)
+            if (pendingUpdate != null) {
+                GitHubCheckStatus.UpdateAvailable(pendingUpdate)
             } else {
                 GitHubCheckStatus.UpToDate(
                     repo = repo,
@@ -477,27 +584,27 @@ object GitHubUpdateManager {
         }
     }
 
-    private fun fetchLatestRelease(repo: String): GitHubBuildInfo? {
+    private fun fetchReleases(repo: String): List<GitHubBuildInfo> {
         val request = Request.Builder()
-            .url("https://api.github.com/repos/$repo/releases/latest")
+            .url("https://api.github.com/repos/$repo/releases?per_page=100")
             .header("Accept", "application/vnd.github+json")
             .header("User-Agent", "DailyBoardgames-Android/${BuildConfig.VERSION_NAME}")
             .build()
 
         client.newCall(request).execute().use { response ->
-            if (response.code == 404) return null
+            if (response.code == 404) return emptyList()
             if (!response.isSuccessful) {
                 throw IllegalStateException("GitHub API error (${response.code}) checking releases.")
             }
             val body = response.body?.string().orEmpty()
-            return GitHubApiParser.parseRelease(repo, body)
+            return GitHubApiParser.parseReleases(repo, body)
         }
     }
 
-    private fun fetchLatestWorkflowRun(repo: String): GitHubBuildInfo? {
+    private fun fetchWorkflowRuns(repo: String): List<GitHubBuildInfo> {
         val urls = listOf(
-            "https://api.github.com/repos/$repo/actions/workflows/build-apk.yml/runs?status=success&per_page=1",
-            "https://api.github.com/repos/$repo/actions/runs?status=success&per_page=1"
+            "https://api.github.com/repos/$repo/actions/workflows/build-apk.yml/runs?status=success&per_page=30",
+            "https://api.github.com/repos/$repo/actions/runs?status=success&per_page=30"
         )
         for (url in urls) {
             val request = Request.Builder()
@@ -512,11 +619,11 @@ object GitHubUpdateManager {
                     throw IllegalStateException("GitHub API error (${response.code}) checking workflow runs.")
                 }
                 val body = response.body?.string().orEmpty()
-                val parsed = GitHubApiParser.parseLatestSuccessfulWorkflowRun(repo, body)
-                if (parsed != null) return parsed
+                val parsed = GitHubApiParser.parseSuccessfulWorkflowRuns(repo, body)
+                if (parsed.isNotEmpty()) return parsed
             }
         }
-        return null
+        return emptyList()
     }
 
     fun openExternalUrl(context: Context, url: String): Boolean {

@@ -11,12 +11,15 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -30,6 +33,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 
+@Immutable
 data class BoardCardPlacement(
     val card: PlayingCard,
     val pileKey: String,
@@ -39,13 +43,13 @@ data class BoardCardPlacement(
     val entranceFlip: Boolean = false,
     val restZIndex: Float,
     val isSelected: Boolean = false,
-    val isHinted: Boolean = false,
-    val onClick: (() -> Unit)? = null
+    val isHinted: Boolean = false
 )
 
 @Composable
 fun AnimatedBoardCard(
     placement: BoardCardPlacement,
+    onClick: (() -> Unit)?,
     cardWidth: Dp,
     cardHeight: Dp,
     dealGeneration: Int,
@@ -55,6 +59,7 @@ fun AnimatedBoardCard(
     centerFont: TextUnit
 ) {
     val density = LocalDensity.current
+    val currentTarget by rememberUpdatedState(placement.targetOffsetPx)
 
     val initialPos = placement.entranceOriginPx ?: placement.targetOffsetPx
     val initialFlip = when {
@@ -119,9 +124,17 @@ fun AnimatedBoardCard(
         val moveJob = if (posAnim.value != placement.targetOffsetPx) {
             launch {
                 val spec = if (pileChanged || isEntrance) {
-                    spring<Offset>(dampingRatio = 0.94f, stiffness = 580f)
+                    spring(
+                        dampingRatio = 0.90f,
+                        stiffness = 320f,
+                        visibilityThreshold = Offset(0.5f, 0.5f)
+                    )
                 } else {
-                    spring<Offset>(dampingRatio = 0.96f, stiffness = 640f)
+                    spring(
+                        dampingRatio = 0.95f,
+                        stiffness = 400f,
+                        visibilityThreshold = Offset(0.5f, 0.5f)
+                    )
                 }
                 posAnim.animateTo(
                     targetValue = placement.targetOffsetPx,
@@ -134,7 +147,7 @@ fun AnimatedBoardCard(
             launch {
                 flipAnim.animateTo(
                     targetValue = if (placement.card.isFaceUp) 0f else 180f,
-                    animationSpec = tween(durationMillis = 220, easing = FastOutSlowInEasing)
+                    animationSpec = tween(durationMillis = 240, easing = FastOutSlowInEasing)
                 )
             }
         } else null
@@ -144,31 +157,36 @@ fun AnimatedBoardCard(
         isFlightActive = false
     }
 
-    val flipDeg = flipAnim.value
-    val showFace = flipDeg <= 90f
+    // Only invalidates composition once at the 90-degree midpoint of a flip, never per frame
+    val showFace by remember { derivedStateOf { flipAnim.value <= 90f } }
     val renderedCard = if (showFace == placement.card.isFaceUp) {
         placement.card
     } else {
         placement.card.copy(isFaceUp = showFace)
     }
-    val rotationYDeg = if (flipDeg > 90f) 180f - flipDeg else -flipDeg
 
     val effectiveZIndex = if (inFlight) 100f + placement.restZIndex else placement.restZIndex
 
     Box(
         modifier = Modifier
             .offset {
+                val target = currentTarget
                 IntOffset(
-                    x = posAnim.value.x.roundToInt(),
-                    y = posAnim.value.y.roundToInt()
+                    x = target.x.roundToInt(),
+                    y = target.y.roundToInt()
                 )
             }
             .zIndex(effectiveZIndex)
             .width(cardWidth)
             .height(cardHeight)
             .graphicsLayer {
-                rotationY = rotationYDeg
-                cameraDistance = 12f * density.density
+                val target = currentTarget
+                val pos = posAnim.value
+                translationX = pos.x - target.x
+                translationY = pos.y - target.y
+                val flipDeg = flipAnim.value
+                rotationY = if (flipDeg > 90f) 180f - flipDeg else -flipDeg
+                cameraDistance = 14f * density.density
             }
     ) {
         PlayingCardView(
@@ -178,7 +196,9 @@ fun AnimatedBoardCard(
             isHinted = placement.isHinted,
             cornerFontSize = cornerFont,
             centerFontSize = centerFont,
-            onClick = placement.onClick,
+            cardWidth = cardWidth,
+            cardHeight = cardHeight,
+            onClick = onClick,
             modifier = Modifier.fillMaxSize()
         )
     }

@@ -169,190 +169,19 @@ fun FreeCellScreen(
                 }
             }
 
-            BoxWithConstraints(
+            FreeCellPlayfield(
+                game = game,
+                dealGeneration = uiState.dealGeneration,
+                selection = uiState.selection,
+                isOledMode = uiState.isOledMode,
+                isLandscape = isLandscape,
+                onFreeCellClick = viewModel::onFreeCellClick,
+                onFoundationClick = viewModel::onFoundationClick,
+                onTableauCardClick = viewModel::onTableauCardClick,
                 modifier = Modifier
                     .fillMaxWidth()
                     .weight(1f)
-                    .padding(
-                        horizontal = if (isLandscape) 8.dp else 5.dp,
-                        vertical = if (isLandscape) 3.dp else 6.dp
-                    )
-                    .testTag("freecell_board")
-            ) {
-                val density = LocalDensity.current
-                val gap = if (isLandscape) 4.dp else 3.dp
-                val boardMaxWidth = maxWidth
-                val boardMaxHeight = maxHeight
-                val rowSpacing = if (isLandscape) 6.dp else 10.dp
-                val widthBasedCardWidth = ((boardMaxWidth - gap * 7) / 8f).coerceAtMost(70.dp)
-                val maxCardHeightForLayout = if (isLandscape) {
-                    (boardMaxHeight * 0.28f).coerceAtLeast(48.dp)
-                } else {
-                    200.dp
-                }
-                val cardWidth = minOf(widthBasedCardWidth, maxCardHeightForLayout * 0.70f)
-                val cardHeight = cardWidth / 0.70f
-                val cornerFont = (cardWidth.value * 0.25f).coerceIn(9.5f, 14f).sp
-                val centerFont = (cardWidth.value * 0.42f).coerceIn(14f, 24f).sp
-
-                val boardSizeKey = remember(boardMaxWidth, boardMaxHeight) {
-                    with(density) {
-                        (boardMaxWidth.toPx().roundToInt().toLong() shl 32) or
-                            (boardMaxHeight.toPx().roundToInt().toLong() and 0xFFFFFFFFL)
-                    }
-                }
-
-                val colGap = ((boardMaxWidth - cardWidth * 8) / 7f).coerceAtLeast(0.dp)
-                val colStep = cardWidth + colGap
-                val tableauTopY = cardHeight + rowSpacing
-                val tableauAvailableHeight = (boardMaxHeight - cardHeight - rowSpacing).coerceAtLeast(48.dp)
-
-                Box(modifier = Modifier.fillMaxSize()) {
-                    // Layer 1: Static empty slots & test-tagged pile targets
-                    Column(
-                        modifier = Modifier.fillMaxSize(),
-                        verticalArrangement = Arrangement.spacedBy(rowSpacing)
-                    ) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.Top
-                        ) {
-                            for (i in 0..3) {
-                                EmptyCardSlot(
-                                    label = "FC",
-                                    isOledMode = uiState.isOledMode,
-                                    onClick = { viewModel.onFreeCellClick(i) },
-                                    modifier = Modifier
-                                        .width(cardWidth)
-                                        .testTag("freecell_cell_$i")
-                                )
-                            }
-
-                            for (f in 0..3) {
-                                EmptyCardSlot(
-                                    label = "A",
-                                    isOledMode = uiState.isOledMode,
-                                    onClick = { viewModel.onFoundationClick(f) },
-                                    modifier = Modifier
-                                        .width(cardWidth)
-                                        .testTag("freecell_foundation_$f")
-                                )
-                            }
-                        }
-
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .weight(1f),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.Top
-                        ) {
-                            for (col in 0..7) {
-                                Box(
-                                    modifier = Modifier
-                                        .width(cardWidth)
-                                        .height(tableauAvailableHeight)
-                                        .testTag("freecell_tableau_$col")
-                                ) {
-                                    EmptyCardSlot(
-                                        label = "",
-                                        isOledMode = uiState.isOledMode,
-                                        onClick = { viewModel.onTableauCardClick(col, 0) },
-                                        modifier = Modifier.fillMaxWidth()
-                                    )
-                                }
-                            }
-                        }
-                    }
-
-                    // Layer 2: Keyed animated playing cards
-                    val placements = buildList {
-                        // 4 Free Cells
-                        for (i in 0..3) {
-                            val card = game.freeCells[i]
-                            if (card != null) {
-                                val targetPx = with(density) { Offset((colStep * i).toPx(), 0f) }
-                                add(
-                                    BoardCardPlacement(
-                                        card = card,
-                                        pileKey = "freecell_$i",
-                                        targetOffsetPx = targetPx,
-                                        restZIndex = 10f,
-                                        isSelected = uiState.selection == FreeCellSelection.FreeCell(i),
-                                        onClick = { viewModel.onFreeCellClick(i) }
-                                    )
-                                )
-                            }
-                        }
-
-                        // 4 Foundations (top 2 so underlying card stays visible when top card moves)
-                        for (f in 0..3) {
-                            val targetPx = with(density) { Offset((colStep * (4 + f)).toPx(), 0f) }
-                            val visibleFoundation = game.foundations[f].takeLast(2)
-                            visibleFoundation.forEachIndexed { idx, card ->
-                                val isTop = idx == visibleFoundation.lastIndex
-                                add(
-                                    BoardCardPlacement(
-                                        card = card,
-                                        pileKey = "foundation_$f",
-                                        targetOffsetPx = targetPx,
-                                        restZIndex = 5f + idx,
-                                        isSelected = isTop && uiState.selection == FreeCellSelection.Foundation(f),
-                                        onClick = if (isTop) ({ viewModel.onFoundationClick(f) }) else null
-                                    )
-                                )
-                            }
-                        }
-
-                        // 8 Tableau columns
-                        for (col in 0..7) {
-                            val pile = game.tableau[col]
-                            if (pile.isNotEmpty()) {
-                                val step = computeFreeCellStep(
-                                    count = pile.size,
-                                    availableHeight = tableauAvailableHeight,
-                                    cardHeight = cardHeight
-                                )
-                                val colX = colStep * col
-                                val sel = uiState.selection
-                                pile.forEachIndexed { idx, card ->
-                                    val isSelected = sel is FreeCellSelection.Tableau &&
-                                        sel.col == col && idx >= sel.cardIndex
-                                    val targetPx = with(density) {
-                                        Offset(colX.toPx(), (tableauTopY + step * idx).toPx())
-                                    }
-                                    add(
-                                        BoardCardPlacement(
-                                            card = card,
-                                            pileKey = "tableau_$col",
-                                            targetOffsetPx = targetPx,
-                                            restZIndex = 10f + idx,
-                                            isSelected = isSelected,
-                                            onClick = { viewModel.onTableauCardClick(col, idx) }
-                                        )
-                                    )
-                                }
-                            }
-                        }
-                    }
-
-                    for (placement in placements) {
-                        key(placement.card.id) {
-                            AnimatedBoardCard(
-                                placement = placement,
-                                cardWidth = cardWidth,
-                                cardHeight = cardHeight,
-                                dealGeneration = uiState.dealGeneration,
-                                boardSizeKey = boardSizeKey,
-                                isOledMode = uiState.isOledMode,
-                                cornerFont = cornerFont,
-                                centerFont = centerFont
-                            )
-                        }
-                    }
-                }
-            }
+            )
         }
     }
 
@@ -441,6 +270,236 @@ fun FreeCellScreen(
                 showTutorialDialog = false
             }
         )
+    }
+}
+
+private data class FreeCellCardEntry(
+    val placement: BoardCardPlacement,
+    val tapType: Int,
+    val arg1: Int = 0,
+    val arg2: Int = 0
+)
+
+private const val FC_TAP_NONE = 0
+private const val FC_TAP_FREECELL = 1
+private const val FC_TAP_FOUNDATION = 2
+private const val FC_TAP_TABLEAU = 3
+
+@Composable
+private fun FreeCellPlayfield(
+    game: FreeCellGameState,
+    dealGeneration: Int,
+    selection: FreeCellSelection?,
+    isOledMode: Boolean,
+    isLandscape: Boolean,
+    onFreeCellClick: (Int) -> Unit,
+    onFoundationClick: (Int) -> Unit,
+    onTableauCardClick: (Int, Int) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    BoxWithConstraints(
+        modifier = modifier
+            .padding(
+                horizontal = if (isLandscape) 8.dp else 5.dp,
+                vertical = if (isLandscape) 3.dp else 6.dp
+            )
+            .testTag("freecell_board")
+    ) {
+        val density = LocalDensity.current
+        val gap = if (isLandscape) 4.dp else 3.dp
+        val boardMaxWidth = maxWidth
+        val boardMaxHeight = maxHeight
+        val rowSpacing = if (isLandscape) 6.dp else 10.dp
+        val widthBasedCardWidth = ((boardMaxWidth - gap * 7) / 8f).coerceAtMost(70.dp)
+        val maxCardHeightForLayout = if (isLandscape) {
+            (boardMaxHeight * 0.28f).coerceAtLeast(48.dp)
+        } else {
+            200.dp
+        }
+        val cardWidth = minOf(widthBasedCardWidth, maxCardHeightForLayout * 0.70f)
+        val cardHeight = cardWidth / 0.70f
+        val cornerFont = (cardWidth.value * 0.25f).coerceIn(9.5f, 14f).sp
+        val centerFont = (cardWidth.value * 0.42f).coerceIn(14f, 24f).sp
+
+        val boardSizeKey = remember(boardMaxWidth, boardMaxHeight) {
+            with(density) {
+                (boardMaxWidth.toPx().roundToInt().toLong() shl 32) or
+                    (boardMaxHeight.toPx().roundToInt().toLong() and 0xFFFFFFFFL)
+            }
+        }
+
+        val colGap = ((boardMaxWidth - cardWidth * 8) / 7f).coerceAtLeast(0.dp)
+        val colStep = cardWidth + colGap
+        val tableauTopY = cardHeight + rowSpacing
+        val tableauAvailableHeight = (boardMaxHeight - cardHeight - rowSpacing).coerceAtLeast(48.dp)
+
+        Box(modifier = Modifier.fillMaxSize()) {
+            // Layer 1: Static empty slots & test-tagged pile targets
+            Column(
+                modifier = Modifier.fillMaxSize(),
+                verticalArrangement = Arrangement.spacedBy(rowSpacing)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.Top
+                ) {
+                    for (i in 0..3) {
+                        EmptyCardSlot(
+                            label = "FC",
+                            isOledMode = isOledMode,
+                            onClick = remember(i, onFreeCellClick) { { onFreeCellClick(i) } },
+                            modifier = Modifier
+                                .width(cardWidth)
+                                .testTag("freecell_cell_$i")
+                        )
+                    }
+
+                    for (f in 0..3) {
+                        EmptyCardSlot(
+                            label = "A",
+                            isOledMode = isOledMode,
+                            onClick = remember(f, onFoundationClick) { { onFoundationClick(f) } },
+                            modifier = Modifier
+                                .width(cardWidth)
+                                .testTag("freecell_foundation_$f")
+                        )
+                    }
+                }
+
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.Top
+                ) {
+                    for (col in 0..7) {
+                        Box(
+                            modifier = Modifier
+                                .width(cardWidth)
+                                .height(tableauAvailableHeight)
+                                .testTag("freecell_tableau_$col")
+                        ) {
+                            EmptyCardSlot(
+                                label = "",
+                                isOledMode = isOledMode,
+                                onClick = remember(col, onTableauCardClick) { { onTableauCardClick(col, 0) } },
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                        }
+                    }
+                }
+            }
+
+            // Layer 2: Keyed animated playing cards
+            val placements = buildList {
+                for (i in 0..3) {
+                    val card = game.freeCells[i]
+                    if (card != null) {
+                        val targetPx = with(density) { Offset((colStep * i).toPx(), 0f) }
+                        add(
+                            FreeCellCardEntry(
+                                placement = BoardCardPlacement(
+                                    card = card,
+                                    pileKey = "freecell_$i",
+                                    targetOffsetPx = targetPx,
+                                    restZIndex = 10f,
+                                    isSelected = selection == FreeCellSelection.FreeCell(i)
+                                ),
+                                tapType = FC_TAP_FREECELL,
+                                arg1 = i
+                            )
+                        )
+                    }
+                }
+
+                for (f in 0..3) {
+                    val targetPx = with(density) { Offset((colStep * (4 + f)).toPx(), 0f) }
+                    val visibleFoundation = game.foundations[f].takeLast(2)
+                    visibleFoundation.forEachIndexed { idx, card ->
+                        val isTop = idx == visibleFoundation.lastIndex
+                        add(
+                            FreeCellCardEntry(
+                                placement = BoardCardPlacement(
+                                    card = card,
+                                    pileKey = "foundation_$f",
+                                    targetOffsetPx = targetPx,
+                                    restZIndex = 5f + idx,
+                                    isSelected = isTop && selection == FreeCellSelection.Foundation(f)
+                                ),
+                                tapType = if (isTop) FC_TAP_FOUNDATION else FC_TAP_NONE,
+                                arg1 = f
+                            )
+                        )
+                    }
+                }
+
+                for (col in 0..7) {
+                    val pile = game.tableau[col]
+                    if (pile.isNotEmpty()) {
+                        val step = computeFreeCellStep(
+                            count = pile.size,
+                            availableHeight = tableauAvailableHeight,
+                            cardHeight = cardHeight
+                        )
+                        val colX = colStep * col
+                        pile.forEachIndexed { idx, card ->
+                            val isSelected = selection is FreeCellSelection.Tableau &&
+                                selection.col == col && idx >= selection.cardIndex
+                            val targetPx = with(density) {
+                                Offset(colX.toPx(), (tableauTopY + step * idx).toPx())
+                            }
+                            add(
+                                FreeCellCardEntry(
+                                    placement = BoardCardPlacement(
+                                        card = card,
+                                        pileKey = "tableau_$col",
+                                        targetOffsetPx = targetPx,
+                                        restZIndex = 10f + idx,
+                                        isSelected = isSelected
+                                    ),
+                                    tapType = FC_TAP_TABLEAU,
+                                    arg1 = col,
+                                    arg2 = idx
+                                )
+                            )
+                        }
+                    }
+                }
+            }
+
+            for (entry in placements) {
+                key(entry.placement.card.id) {
+                    val onCardClick = remember(
+                        entry.tapType,
+                        entry.arg1,
+                        entry.arg2,
+                        onFreeCellClick,
+                        onFoundationClick,
+                        onTableauCardClick
+                    ) {
+                        when (entry.tapType) {
+                            FC_TAP_FREECELL -> ({ onFreeCellClick(entry.arg1) })
+                            FC_TAP_FOUNDATION -> ({ onFoundationClick(entry.arg1) })
+                            FC_TAP_TABLEAU -> ({ onTableauCardClick(entry.arg1, entry.arg2) })
+                            else -> null
+                        }
+                    }
+                    AnimatedBoardCard(
+                        placement = entry.placement,
+                        onClick = onCardClick,
+                        cardWidth = cardWidth,
+                        cardHeight = cardHeight,
+                        dealGeneration = dealGeneration,
+                        boardSizeKey = boardSizeKey,
+                        isOledMode = isOledMode,
+                        cornerFont = cornerFont,
+                        centerFont = centerFont
+                    )
+                }
+            }
+        }
     }
 }
 

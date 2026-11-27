@@ -191,253 +191,20 @@ fun SolitaireScreen(
                 }
             }
 
-            // Board Playfield
-            val prevDealAndGameState = remember { mutableStateOf<Pair<Int, SolitaireGameState>?>(null) }
-            val prevGame = prevDealAndGameState.value
-                ?.takeIf { it.first == uiState.dealGeneration }
-                ?.second
-            SideEffect {
-                prevDealAndGameState.value = uiState.dealGeneration to game
-            }
-
-            BoxWithConstraints(
+            SolitairePlayfield(
+                game = game,
+                dealGeneration = uiState.dealGeneration,
+                selection = uiState.selection,
+                isOledMode = uiState.isOledMode,
+                isLandscape = isLandscape,
+                onStockClick = viewModel::onStockClick,
+                onWasteClick = viewModel::onWasteClick,
+                onFoundationClick = viewModel::onFoundationClick,
+                onTableauCardClick = viewModel::onTableauCardClick,
                 modifier = Modifier
                     .fillMaxWidth()
                     .weight(1f)
-                    .padding(
-                        horizontal = if (isLandscape) 8.dp else 6.dp,
-                        vertical = if (isLandscape) 3.dp else 6.dp
-                    )
-                    .testTag("solitaire_board")
-            ) {
-                val density = LocalDensity.current
-                val gap = 4.dp
-                val boardMaxWidth = maxWidth
-                val boardMaxHeight = maxHeight
-                val rowSpacing = if (isLandscape) 6.dp else 10.dp
-                val widthBasedCardWidth = ((boardMaxWidth - gap * 6) / 7f).coerceAtMost(74.dp)
-                val maxCardHeightForLayout = if (isLandscape) {
-                    (boardMaxHeight * 0.28f).coerceAtLeast(48.dp)
-                } else {
-                    200.dp
-                }
-                val cardWidth = minOf(widthBasedCardWidth, maxCardHeightForLayout * 0.70f)
-                val cardHeight = cardWidth / 0.70f
-                val cornerFont = (cardWidth.value * 0.24f).coerceIn(10f, 15f).sp
-                val centerFont = (cardWidth.value * 0.42f).coerceIn(16f, 26f).sp
-
-                val boardSizeKey = remember(boardMaxWidth, boardMaxHeight) {
-                    with(density) {
-                        (boardMaxWidth.toPx().roundToInt().toLong() shl 32) or
-                            (boardMaxHeight.toPx().roundToInt().toLong() and 0xFFFFFFFFL)
-                    }
-                }
-
-                val stockOffsetPx = Offset.Zero
-                val wasteBaseOffsetPx = with(density) { Offset((cardWidth + 8.dp).toPx(), 0f) }
-                val wasteStepPx = with(density) { 12.dp.toPx() }
-                val foundationsStartX = (boardMaxWidth - (cardWidth * 4 + gap * 3)).coerceAtLeast(0.dp)
-                val tableauTopY = cardHeight + rowSpacing
-                val tableauAvailableHeight = (boardMaxHeight - cardHeight - rowSpacing).coerceAtLeast(48.dp)
-                val tableauColGap = ((boardMaxWidth - cardWidth * 7) / 6f).coerceAtLeast(0.dp)
-                val tableauColStep = cardWidth + tableauColGap
-
-                Box(modifier = Modifier.fillMaxSize()) {
-                    // Layer 1: Static empty slots & test-tagged pile targets
-                    Column(
-                        modifier = Modifier.fillMaxSize(),
-                        verticalArrangement = Arrangement.spacedBy(rowSpacing)
-                    ) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.Top
-                        ) {
-                            Row(
-                                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                verticalAlignment = Alignment.Top
-                            ) {
-                                EmptyCardSlot(
-                                    label = "↻",
-                                    isOledMode = uiState.isOledMode,
-                                    onClick = { viewModel.onStockClick() },
-                                    modifier = Modifier
-                                        .width(cardWidth)
-                                        .testTag("solitaire_stock_pile")
-                                )
-
-                                Box(
-                                    modifier = Modifier
-                                        .width(cardWidth * 1.45f)
-                                        .height(cardHeight)
-                                        .testTag("solitaire_waste_pile")
-                                ) {
-                                    EmptyCardSlot(
-                                        label = "",
-                                        isOledMode = uiState.isOledMode,
-                                        modifier = Modifier.width(cardWidth)
-                                    )
-                                }
-                            }
-
-                            Row(
-                                horizontalArrangement = Arrangement.spacedBy(gap),
-                                verticalAlignment = Alignment.Top
-                            ) {
-                                val suitHints = listOf(Suit.SPADES, Suit.HEARTS, Suit.CLUBS, Suit.DIAMONDS)
-                                for (f in 0..3) {
-                                    EmptyCardSlot(
-                                        label = "A",
-                                        isOledMode = uiState.isOledMode,
-                                        tint = if (suitHints[f].isRed) Color(0xFFEF4444).copy(alpha = 0.55f) else null,
-                                        onClick = { viewModel.onFoundationClick(f) },
-                                        modifier = Modifier
-                                            .width(cardWidth)
-                                            .testTag("solitaire_foundation_$f")
-                                    )
-                                }
-                            }
-                        }
-
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .weight(1f),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.Top
-                        ) {
-                            for (col in 0..6) {
-                                Box(
-                                    modifier = Modifier
-                                        .width(cardWidth)
-                                        .height(tableauAvailableHeight)
-                                        .testTag("solitaire_tableau_$col")
-                                ) {
-                                    EmptyCardSlot(
-                                        label = "K",
-                                        isOledMode = uiState.isOledMode,
-                                        onClick = { viewModel.onTableauCardClick(col, 0) },
-                                        modifier = Modifier.fillMaxWidth()
-                                    )
-                                }
-                            }
-                        }
-                    }
-
-                    // Layer 2: Keyed animated playing cards
-                    val placements = buildList {
-                        // Stock (top 2 so next face-down card sits ready underneath during draw)
-                        val stockVisible = game.stock.takeLast(2)
-                        val recycledFromWaste = prevGame != null && prevGame.stock.isEmpty() && game.stock.isNotEmpty()
-                        stockVisible.forEachIndexed { idx, card ->
-                            val isTop = idx == stockVisible.lastIndex
-                            add(
-                                BoardCardPlacement(
-                                    card = card,
-                                    pileKey = "stock",
-                                    targetOffsetPx = stockOffsetPx,
-                                    entranceOriginPx = if (isTop && recycledFromWaste) wasteBaseOffsetPx else null,
-                                    restZIndex = 1f + idx,
-                                    onClick = if (isTop) ({ viewModel.onStockClick() }) else null
-                                )
-                            )
-                        }
-
-                        // Waste
-                        val drawnFromStock = prevGame != null && prevGame.stock.size > game.stock.size
-                        val prevStockIds = if (drawnFromStock) prevGame!!.stock.map { it.id }.toSet() else emptySet()
-                        val visibleWaste = if (game.drawMode == SolitaireDrawMode.DRAW_3) {
-                            game.waste.takeLast(3)
-                        } else {
-                            game.waste.takeLast(2)
-                        }
-                        visibleWaste.forEachIndexed { idx, card ->
-                            val isTop = idx == visibleWaste.lastIndex
-                            val fanX = if (game.drawMode == SolitaireDrawMode.DRAW_3) idx * wasteStepPx else 0f
-                            val justDrawn = drawnFromStock && card.id in prevStockIds
-                            add(
-                                BoardCardPlacement(
-                                    card = card,
-                                    pileKey = "waste",
-                                    targetOffsetPx = Offset(wasteBaseOffsetPx.x + fanX, wasteBaseOffsetPx.y),
-                                    entranceOriginPx = if (justDrawn) stockOffsetPx else null,
-                                    entranceDelayMs = if (justDrawn && game.drawMode == SolitaireDrawMode.DRAW_3) idx * 45 else 0,
-                                    entranceFlip = justDrawn,
-                                    restZIndex = 20f + idx,
-                                    isSelected = isTop && uiState.selection == SolitaireSelection.Waste,
-                                    onClick = if (isTop) ({ viewModel.onWasteClick() }) else null
-                                )
-                            )
-                        }
-
-                        // Foundations (top 2 so underlying card stays visible when top card moves)
-                        for (f in 0..3) {
-                            val foundationX = foundationsStartX + (cardWidth + gap) * f
-                            val foundationOffsetPx = with(density) { Offset(foundationX.toPx(), 0f) }
-                            val visibleFoundation = game.foundations[f].takeLast(2)
-                            visibleFoundation.forEachIndexed { idx, card ->
-                                val isTop = idx == visibleFoundation.lastIndex
-                                add(
-                                    BoardCardPlacement(
-                                        card = card,
-                                        pileKey = "foundation_$f",
-                                        targetOffsetPx = foundationOffsetPx,
-                                        restZIndex = 5f + idx,
-                                        isSelected = isTop && uiState.selection == SolitaireSelection.Foundation(f),
-                                        onClick = if (isTop) ({ viewModel.onFoundationClick(f) }) else null
-                                    )
-                                )
-                            }
-                        }
-
-                        // 7 Tableau columns
-                        for (col in 0..6) {
-                            val pile = game.tableau[col]
-                            if (pile.isNotEmpty()) {
-                                val offsets = computeCascadeOffsets(
-                                    pile = pile,
-                                    availableHeight = tableauAvailableHeight,
-                                    cardHeight = cardHeight
-                                )
-                                val colX = tableauColStep * col
-                                val sel = uiState.selection
-                                pile.forEachIndexed { idx, card ->
-                                    val isSelected = sel is SolitaireSelection.Tableau &&
-                                        sel.col == col && idx >= sel.cardIndex
-                                    val targetPx = with(density) {
-                                        Offset(colX.toPx(), (tableauTopY + offsets[idx]).toPx())
-                                    }
-                                    add(
-                                        BoardCardPlacement(
-                                            card = card,
-                                            pileKey = "tableau_$col",
-                                            targetOffsetPx = targetPx,
-                                            restZIndex = 10f + idx,
-                                            isSelected = isSelected,
-                                            onClick = { viewModel.onTableauCardClick(col, idx) }
-                                        )
-                                    )
-                                }
-                            }
-                        }
-                    }
-
-                    for (placement in placements) {
-                        key(placement.card.id) {
-                            AnimatedBoardCard(
-                                placement = placement,
-                                cardWidth = cardWidth,
-                                cardHeight = cardHeight,
-                                dealGeneration = uiState.dealGeneration,
-                                boardSizeKey = boardSizeKey,
-                                isOledMode = uiState.isOledMode,
-                                cornerFont = cornerFont,
-                                centerFont = centerFont
-                            )
-                        }
-                    }
-                }
-            }
+            )
         }
     }
 
@@ -532,6 +299,302 @@ fun SolitaireScreen(
                 showTutorialDialog = false
             }
         )
+    }
+}
+
+private data class SolitaireCardEntry(
+    val placement: BoardCardPlacement,
+    val tapType: Int,
+    val arg1: Int = 0,
+    val arg2: Int = 0
+)
+
+private const val SOL_TAP_NONE = 0
+private const val SOL_TAP_STOCK = 1
+private const val SOL_TAP_WASTE = 2
+private const val SOL_TAP_FOUNDATION = 3
+private const val SOL_TAP_TABLEAU = 4
+
+@Composable
+private fun SolitairePlayfield(
+    game: SolitaireGameState,
+    dealGeneration: Int,
+    selection: SolitaireSelection?,
+    isOledMode: Boolean,
+    isLandscape: Boolean,
+    onStockClick: () -> Unit,
+    onWasteClick: () -> Unit,
+    onFoundationClick: (Int) -> Unit,
+    onTableauCardClick: (Int, Int) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val prevDealAndGameState = remember { mutableStateOf<Pair<Int, SolitaireGameState>?>(null) }
+    val prevGame = prevDealAndGameState.value
+        ?.takeIf { it.first == dealGeneration }
+        ?.second
+    SideEffect {
+        prevDealAndGameState.value = dealGeneration to game
+    }
+
+    BoxWithConstraints(
+        modifier = modifier
+            .padding(
+                horizontal = if (isLandscape) 8.dp else 6.dp,
+                vertical = if (isLandscape) 3.dp else 6.dp
+            )
+            .testTag("solitaire_board")
+    ) {
+        val density = LocalDensity.current
+        val gap = 4.dp
+        val boardMaxWidth = maxWidth
+        val boardMaxHeight = maxHeight
+        val rowSpacing = if (isLandscape) 6.dp else 10.dp
+        val widthBasedCardWidth = ((boardMaxWidth - gap * 6) / 7f).coerceAtMost(74.dp)
+        val maxCardHeightForLayout = if (isLandscape) {
+            (boardMaxHeight * 0.28f).coerceAtLeast(48.dp)
+        } else {
+            200.dp
+        }
+        val cardWidth = minOf(widthBasedCardWidth, maxCardHeightForLayout * 0.70f)
+        val cardHeight = cardWidth / 0.70f
+        val cornerFont = (cardWidth.value * 0.24f).coerceIn(10f, 15f).sp
+        val centerFont = (cardWidth.value * 0.42f).coerceIn(16f, 26f).sp
+
+        val boardSizeKey = remember(boardMaxWidth, boardMaxHeight) {
+            with(density) {
+                (boardMaxWidth.toPx().roundToInt().toLong() shl 32) or
+                    (boardMaxHeight.toPx().roundToInt().toLong() and 0xFFFFFFFFL)
+            }
+        }
+
+        val stockOffsetPx = Offset.Zero
+        val wasteBaseOffsetPx = with(density) { Offset((cardWidth + 8.dp).toPx(), 0f) }
+        val wasteStepPx = with(density) { 12.dp.toPx() }
+        val foundationsStartX = (boardMaxWidth - (cardWidth * 4 + gap * 3)).coerceAtLeast(0.dp)
+        val tableauTopY = cardHeight + rowSpacing
+        val tableauAvailableHeight = (boardMaxHeight - cardHeight - rowSpacing).coerceAtLeast(48.dp)
+        val tableauColGap = ((boardMaxWidth - cardWidth * 7) / 6f).coerceAtLeast(0.dp)
+        val tableauColStep = cardWidth + tableauColGap
+
+        Box(modifier = Modifier.fillMaxSize()) {
+            // Layer 1: Static empty slots & test-tagged pile targets
+            Column(
+                modifier = Modifier.fillMaxSize(),
+                verticalArrangement = Arrangement.spacedBy(rowSpacing)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.Top
+                ) {
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.Top
+                    ) {
+                        EmptyCardSlot(
+                            label = "↻",
+                            isOledMode = isOledMode,
+                            onClick = onStockClick,
+                            modifier = Modifier
+                                .width(cardWidth)
+                                .testTag("solitaire_stock_pile")
+                        )
+
+                        Box(
+                            modifier = Modifier
+                                .width(cardWidth * 1.45f)
+                                .height(cardHeight)
+                                .testTag("solitaire_waste_pile")
+                        ) {
+                            EmptyCardSlot(
+                                label = "",
+                                isOledMode = isOledMode,
+                                modifier = Modifier.width(cardWidth)
+                            )
+                        }
+                    }
+
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(gap),
+                        verticalAlignment = Alignment.Top
+                    ) {
+                        val suitHints = listOf(Suit.SPADES, Suit.HEARTS, Suit.CLUBS, Suit.DIAMONDS)
+                        for (f in 0..3) {
+                            EmptyCardSlot(
+                                label = "A",
+                                isOledMode = isOledMode,
+                                tint = if (suitHints[f].isRed) Color(0xFFEF4444).copy(alpha = 0.55f) else null,
+                                onClick = remember(f, onFoundationClick) { { onFoundationClick(f) } },
+                                modifier = Modifier
+                                    .width(cardWidth)
+                                    .testTag("solitaire_foundation_$f")
+                            )
+                        }
+                    }
+                }
+
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.Top
+                ) {
+                    for (col in 0..6) {
+                        Box(
+                            modifier = Modifier
+                                .width(cardWidth)
+                                .height(tableauAvailableHeight)
+                                .testTag("solitaire_tableau_$col")
+                        ) {
+                            EmptyCardSlot(
+                                label = "K",
+                                isOledMode = isOledMode,
+                                onClick = remember(col, onTableauCardClick) { { onTableauCardClick(col, 0) } },
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                        }
+                    }
+                }
+            }
+
+            // Layer 2: Keyed animated playing cards
+            val placements = buildList {
+                val stockVisible = game.stock.takeLast(2)
+                val recycledFromWaste = prevGame != null && prevGame.stock.isEmpty() && game.stock.isNotEmpty()
+                stockVisible.forEachIndexed { idx, card ->
+                    val isTop = idx == stockVisible.lastIndex
+                    add(
+                        SolitaireCardEntry(
+                            placement = BoardCardPlacement(
+                                card = card,
+                                pileKey = "stock",
+                                targetOffsetPx = stockOffsetPx,
+                                entranceOriginPx = if (isTop && recycledFromWaste) wasteBaseOffsetPx else null,
+                                restZIndex = 1f + idx
+                            ),
+                            tapType = if (isTop) SOL_TAP_STOCK else SOL_TAP_NONE
+                        )
+                    )
+                }
+
+                val drawnFromStock = prevGame != null && prevGame.stock.size > game.stock.size
+                val prevStockIds = if (drawnFromStock) prevGame!!.stock.map { it.id }.toSet() else emptySet()
+                val visibleWaste = if (game.drawMode == SolitaireDrawMode.DRAW_3) {
+                    game.waste.takeLast(3)
+                } else {
+                    game.waste.takeLast(2)
+                }
+                visibleWaste.forEachIndexed { idx, card ->
+                    val isTop = idx == visibleWaste.lastIndex
+                    val fanX = if (game.drawMode == SolitaireDrawMode.DRAW_3) idx * wasteStepPx else 0f
+                    val justDrawn = drawnFromStock && card.id in prevStockIds
+                    add(
+                        SolitaireCardEntry(
+                            placement = BoardCardPlacement(
+                                card = card,
+                                pileKey = "waste",
+                                targetOffsetPx = Offset(wasteBaseOffsetPx.x + fanX, wasteBaseOffsetPx.y),
+                                entranceOriginPx = if (justDrawn) stockOffsetPx else null,
+                                entranceDelayMs = if (justDrawn && game.drawMode == SolitaireDrawMode.DRAW_3) idx * 35 else 0,
+                                entranceFlip = justDrawn,
+                                restZIndex = 20f + idx,
+                                isSelected = isTop && selection == SolitaireSelection.Waste
+                            ),
+                            tapType = if (isTop) SOL_TAP_WASTE else SOL_TAP_NONE
+                        )
+                    )
+                }
+
+                for (f in 0..3) {
+                    val foundationX = foundationsStartX + (cardWidth + gap) * f
+                    val foundationOffsetPx = with(density) { Offset(foundationX.toPx(), 0f) }
+                    val visibleFoundation = game.foundations[f].takeLast(2)
+                    visibleFoundation.forEachIndexed { idx, card ->
+                        val isTop = idx == visibleFoundation.lastIndex
+                        add(
+                            SolitaireCardEntry(
+                                placement = BoardCardPlacement(
+                                    card = card,
+                                    pileKey = "foundation_$f",
+                                    targetOffsetPx = foundationOffsetPx,
+                                    restZIndex = 5f + idx,
+                                    isSelected = isTop && selection == SolitaireSelection.Foundation(f)
+                                ),
+                                tapType = if (isTop) SOL_TAP_FOUNDATION else SOL_TAP_NONE,
+                                arg1 = f
+                            )
+                        )
+                    }
+                }
+
+                for (col in 0..6) {
+                    val pile = game.tableau[col]
+                    if (pile.isNotEmpty()) {
+                        val offsets = computeCascadeOffsets(
+                            pile = pile,
+                            availableHeight = tableauAvailableHeight,
+                            cardHeight = cardHeight
+                        )
+                        val colX = tableauColStep * col
+                        pile.forEachIndexed { idx, card ->
+                            val isSelected = selection is SolitaireSelection.Tableau &&
+                                selection.col == col && idx >= selection.cardIndex
+                            val targetPx = with(density) {
+                                Offset(colX.toPx(), (tableauTopY + offsets[idx]).toPx())
+                            }
+                            add(
+                                SolitaireCardEntry(
+                                    placement = BoardCardPlacement(
+                                        card = card,
+                                        pileKey = "tableau_$col",
+                                        targetOffsetPx = targetPx,
+                                        restZIndex = 10f + idx,
+                                        isSelected = isSelected
+                                    ),
+                                    tapType = SOL_TAP_TABLEAU,
+                                    arg1 = col,
+                                    arg2 = idx
+                                )
+                            )
+                        }
+                    }
+                }
+            }
+
+            for (entry in placements) {
+                key(entry.placement.card.id) {
+                    val onCardClick = remember(
+                        entry.tapType,
+                        entry.arg1,
+                        entry.arg2,
+                        onStockClick,
+                        onWasteClick,
+                        onFoundationClick,
+                        onTableauCardClick
+                    ) {
+                        when (entry.tapType) {
+                            SOL_TAP_STOCK -> onStockClick
+                            SOL_TAP_WASTE -> onWasteClick
+                            SOL_TAP_FOUNDATION -> ({ onFoundationClick(entry.arg1) })
+                            SOL_TAP_TABLEAU -> ({ onTableauCardClick(entry.arg1, entry.arg2) })
+                            else -> null
+                        }
+                    }
+                    AnimatedBoardCard(
+                        placement = entry.placement,
+                        onClick = onCardClick,
+                        cardWidth = cardWidth,
+                        cardHeight = cardHeight,
+                        dealGeneration = dealGeneration,
+                        boardSizeKey = boardSizeKey,
+                        isOledMode = isOledMode,
+                        cornerFont = cornerFont,
+                        centerFont = centerFont
+                    )
+                }
+            }
+        }
     }
 }
 

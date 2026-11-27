@@ -191,6 +191,23 @@ object AppSettingsStore {
         return res.isFirstWinToday
     }
 
+    private const val KEY_DAILY_SWEEP_CELEBRATED_DATE = "daily_sweep_celebrated_date"
+
+    fun consumeDailySweepCelebrationIfReady(
+        context: Context,
+        totalGames: Int = GameDestination.entries.size
+    ): Boolean {
+        init(context)
+        if (totalGames <= 0) return false
+        val completedToday = _dailyStreaks.value.values.count { it.isWinAwardedToday }
+        if (completedToday < totalGames) return false
+        val today = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US).format(java.util.Date())
+        val lastCelebrated = prefs.getString(KEY_DAILY_SWEEP_CELEBRATED_DATE, null)
+        if (lastCelebrated == today) return false
+        prefs.edit().putString(KEY_DAILY_SWEEP_CELEBRATED_DATE, today).apply()
+        return true
+    }
+
     fun hasSeenTutorial(game: GameDestination): Boolean {
         return _settings.value.seenTutorials.contains(game)
     }

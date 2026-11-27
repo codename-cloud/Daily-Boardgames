@@ -124,6 +124,31 @@ class PerGameDailyStreakTest {
         assertFalse(AppSettingsStore.settings.value.isOledMode)
     }
 
+    @Test
+    fun testDailySweepCelebrationTriggersOnceAfterAllFourGamesWonToday() {
+        val fakeContext = InMemoryPrefsContext()
+        AppSettingsStore.init(fakeContext)
+
+        assertFalse(AppSettingsStore.consumeDailySweepCelebrationIfReady(fakeContext))
+
+        AppSettingsStore.recordDailyWin(fakeContext, GameDestination.MINESWEEPER)
+        AppSettingsStore.recordDailyWin(fakeContext, GameDestination.SOLITAIRE)
+        AppSettingsStore.recordDailyWin(fakeContext, GameDestination.FREECELL)
+        assertFalse(AppSettingsStore.consumeDailySweepCelebrationIfReady(fakeContext))
+
+        // 4th daily win completes 4/4
+        AppSettingsStore.recordDailyWin(fakeContext, GameDestination.SUDOKU)
+        assertTrue(AppSettingsStore.consumeDailySweepCelebrationIfReady(fakeContext))
+
+        // Subsequent returns to the home screen on the same day should not re-trigger
+        assertFalse(AppSettingsStore.consumeDailySweepCelebrationIfReady(fakeContext))
+
+        // Even across process restart on the same day, the celebrated state is persisted
+        AppSettingsStore.resetForTesting()
+        AppSettingsStore.init(fakeContext)
+        assertFalse(AppSettingsStore.consumeDailySweepCelebrationIfReady(fakeContext))
+    }
+
     private class InMemoryPrefsContext : ContextWrapper(null) {
         private val prefsMap = mutableMapOf<String, InMemorySharedPreferences>()
 

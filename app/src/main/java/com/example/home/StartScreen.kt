@@ -1,6 +1,8 @@
 package com.example.home
 
 import androidx.annotation.DrawableRes
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -36,16 +38,19 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
@@ -60,6 +65,7 @@ import com.example.common.AppSettingsStore
 import com.example.common.GitHubUpdateDialog
 import com.example.common.GitHubUpdateManager
 import com.example.common.rememberArcadeThemeColors
+import com.example.minesweeper.audio.SoundManager
 import com.example.minesweeper.data.DailyStreak
 import com.example.minesweeper.haptic.HapticManager
 import com.example.minesweeper.ui.components.DailyStreakBadge
@@ -104,7 +110,14 @@ fun StartScreen(
     var selectedStreakEntry by remember { mutableStateOf<GameMenuEntry?>(null) }
     var showSettingsDialog by remember { mutableStateOf(false) }
     var showUpdateDialog by remember { mutableStateOf(false) }
+    var showDailySweepCelebration by remember { mutableStateOf(false) }
     val hapticManager = remember { HapticManager(context) }
+    val soundManager = remember { SoundManager() }
+    val coroutineScope = rememberCoroutineScope()
+
+    DisposableEffect(Unit) {
+        onDispose { soundManager.release() }
+    }
 
     LaunchedEffect(settings.githubRepo) {
         if (settings.githubRepo.isNotBlank()) {
@@ -116,11 +129,27 @@ fun StartScreen(
         (dailyStreaks[entry.destination] ?: entry.dailyStreak).isWinAwardedToday
     }
 
-    Scaffold(
-        modifier = modifier.fillMaxSize(),
-        containerColor = colors.screenBackground,
-        contentWindowInsets = WindowInsets(0, 0, 0, 0)
-    ) { _ ->
+    LaunchedEffect(completedTodayCount, games.size) {
+        if (games.isNotEmpty() &&
+            completedTodayCount >= games.size &&
+            AppSettingsStore.consumeDailySweepCelebrationIfReady(context, games.size)
+        ) {
+            showDailySweepCelebration = true
+            if (settings.isSoundEnabled) {
+                soundManager.playVictory(coroutineScope)
+            }
+            if (settings.isHapticsEnabled) {
+                hapticManager.performFlagHaptic(settings.hapticStrength)
+            }
+        }
+    }
+
+    Box(modifier = modifier.fillMaxSize()) {
+        Scaffold(
+            modifier = Modifier.fillMaxSize(),
+            containerColor = colors.screenBackground,
+            contentWindowInsets = WindowInsets(0, 0, 0, 0)
+        ) { _ ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -265,8 +294,18 @@ fun StartScreen(
                                 color = colors.primaryText
                             )
 
+                            val counterPulseScale by animateFloatAsState(
+                                targetValue = if (showDailySweepCelebration) 1.14f else 1f,
+                                animationSpec = spring(dampingRatio = 0.5f, stiffness = 300f),
+                                label = "daily_wins_counter_pulse"
+                            )
+
                             Box(
                                 modifier = Modifier
+                                    .graphicsLayer {
+                                        scaleX = counterPulseScale
+                                        scaleY = counterPulseScale
+                                    }
                                     .clip(RoundedCornerShape(8.dp))
                                     .background(counterBg)
                                     .border(1.dp, counterBorder, RoundedCornerShape(8.dp))
@@ -298,6 +337,14 @@ fun StartScreen(
                 }
             }
         }
+        }
+
+        DailySweepCelebrationOverlay(
+            visible = showDailySweepCelebration,
+            isOledMode = settings.isOledMode,
+            isDark = isDark,
+            onFinished = { showDailySweepCelebration = false }
+        )
     }
 
     selectedStreakEntry?.let { entry ->

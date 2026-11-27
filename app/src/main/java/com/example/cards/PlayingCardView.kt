@@ -201,7 +201,7 @@ private fun PlayingCardContent(
                     .padding(
                         start = if (isCourt) hPad else 2.dp,
                         end = if (isCourt) hPad else 2.dp,
-                        bottom = if (isCourt) hPad else 3.dp
+                        bottom = if (isCourt) 0.dp else 3.dp
                     ),
                 contentAlignment = Alignment.Center
             ) {

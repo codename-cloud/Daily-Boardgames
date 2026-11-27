@@ -14,6 +14,8 @@ import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.PathFillType
+import androidx.compose.ui.graphics.PathOperation
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.DrawScope
@@ -250,26 +252,44 @@ private fun buildSuitPath(
             close()
         }
 
-        Suit.CLUBS -> Path().apply {
+        Suit.CLUBS -> {
             val r = 0.215f * s
-            addOval(Rect(center = Offset(dx + 0.50f * s, dy + 0.27f * s), radius = r))
-            addOval(Rect(center = Offset(dx + 0.265f * s, dy + 0.56f * s), radius = r))
-            addOval(Rect(center = Offset(dx + 0.735f * s, dy + 0.56f * s), radius = r))
-            addOval(Rect(center = Offset(dx + 0.50f * s, dy + 0.51f * s), radius = 0.14f * s))
-            moveTo(dx + 0.46f * s, dy + 0.54f * s)
-            lineTo(dx + 0.54f * s, dy + 0.54f * s)
-            cubicTo(
-                dx + 0.54f * s, dy + 0.75f * s,
-                dx + 0.58f * s, dy + 0.86f * s,
-                dx + 0.65f * s, dy + 0.95f * s
-            )
-            lineTo(dx + 0.35f * s, dy + 0.95f * s)
-            cubicTo(
-                dx + 0.42f * s, dy + 0.86f * s,
-                dx + 0.46f * s, dy + 0.75f * s,
-                dx + 0.46f * s, dy + 0.54f * s
-            )
-            close()
+            val lobesPath = Path().apply {
+                fillType = PathFillType.NonZero
+                addOval(
+                    Rect(center = Offset(dx + 0.50f * s, dy + 0.27f * s), radius = r),
+                    Path.Direction.CounterClockwise
+                )
+                addOval(
+                    Rect(center = Offset(dx + 0.265f * s, dy + 0.56f * s), radius = r),
+                    Path.Direction.CounterClockwise
+                )
+                addOval(
+                    Rect(center = Offset(dx + 0.735f * s, dy + 0.56f * s), radius = r),
+                    Path.Direction.CounterClockwise
+                )
+                addOval(
+                    Rect(center = Offset(dx + 0.50f * s, dy + 0.51f * s), radius = 0.14f * s),
+                    Path.Direction.CounterClockwise
+                )
+            }
+            val stemPath = Path().apply {
+                fillType = PathFillType.NonZero
+                moveTo(dx + 0.46f * s, dy + 0.52f * s)
+                cubicTo(
+                    dx + 0.46f * s, dy + 0.74f * s,
+                    dx + 0.42f * s, dy + 0.86f * s,
+                    dx + 0.35f * s, dy + 0.95f * s
+                )
+                lineTo(dx + 0.65f * s, dy + 0.95f * s)
+                cubicTo(
+                    dx + 0.58f * s, dy + 0.86f * s,
+                    dx + 0.54f * s, dy + 0.74f * s,
+                    dx + 0.54f * s, dy + 0.52f * s
+                )
+                close()
+            }
+            Path.combine(PathOperation.Union, lobesPath, stemPath)
         }
     }
 }
@@ -291,7 +311,7 @@ internal fun SuitSymbolCanvas(
 }
 
 /**
- * Framed traditional red/blue/gold royal court illustration for Jack, Queen, and King.
+ * Frameless traditional red/blue/gold royal court illustration for Jack, Queen, and King.
  */
 @Composable
 internal fun CourtCardArtwork(
@@ -304,26 +324,19 @@ internal fun CourtCardArtwork(
     val royalGold = Color(0xFFFACC15)
     val skinCream = Color(0xFFFFF8EC)
     val inkBlack = Color(0xFF111111)
-    val frameBorder = Color(0xFF1F2937)
 
     val primaryRobe = if (suit.isRed) royalRed else royalBlue
     val secondaryRobe = if (suit.isRed) royalBlue else royalRed
 
-    Box(
+    Spacer(
         modifier = modifier
-            .background(Color.White)
-            .border(1.dp, frameBorder)
-    ) {
-        Spacer(
-            modifier = Modifier
-                .fillMaxSize()
-                .drawWithCache {
-                    val w = size.width
-                    val h = size.height
-                    val strokeW = (w * 0.025f).coerceAtLeast(1f)
-                    val outline = Stroke(width = strokeW, cap = StrokeCap.Round, join = StrokeJoin.Round)
-                    val eyeY = 0.39f * h
-                    val eyeR = (w * 0.022f).coerceAtLeast(1.2f)
+            .drawWithCache {
+                val w = size.width
+                val h = size.height
+                val strokeW = (w * 0.025f).coerceAtLeast(1f)
+                val outline = Stroke(width = strokeW, cap = StrokeCap.Round, join = StrokeJoin.Round)
+                val eyeY = 0.39f * h
+                val eyeR = (w * 0.022f).coerceAtLeast(1.2f)
 
                     val torsoPath = Path().apply {
                         moveTo(0.06f * w, 1.02f * h)
@@ -402,17 +415,9 @@ internal fun CourtCardArtwork(
                         }
                         else -> null
                     }
-                    val pipSize = minOf(w, h) * 0.22f
-                    val cornerPipPath = buildSuitPath(
-                        suit = suit,
-                        topLeft = Offset(w - pipSize - 0.06f * w, 0.05f * h),
-                        symbolSize = Size(pipSize, pipSize)
-                    )
-                    val cornerPipColor = if (suit.isRed) royalRed else inkBlack
 
                     onDrawBehind {
                         clipRect {
-                            drawRect(color = Color.White)
                             drawPath(torsoPath, color = primaryRobe)
                             drawPath(panelPath, color = secondaryRobe)
                             drawRect(
@@ -543,11 +548,8 @@ internal fun CourtCardArtwork(
 
                                 else -> Unit
                             }
-
-                            drawPath(path = cornerPipPath, color = cornerPipColor, style = Fill)
                         }
                     }
                 }
-        )
-    }
+    )
 }

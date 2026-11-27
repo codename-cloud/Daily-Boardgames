@@ -54,7 +54,6 @@ import com.example.cards.AnimatedBoardCard
 import com.example.cards.BoardCardPlacement
 import com.example.cards.EmptyCardSlot
 import com.example.cards.PlayingCard
-import com.example.cards.Suit
 import com.example.common.AppSettingsStore
 import com.example.common.ArcadeGameHUD
 import com.example.common.ArcadePillButton
@@ -422,12 +421,10 @@ private fun SolitairePlayfield(
                         horizontalArrangement = Arrangement.spacedBy(gap),
                         verticalAlignment = Alignment.Top
                     ) {
-                        val suitHints = listOf(Suit.SPADES, Suit.HEARTS, Suit.CLUBS, Suit.DIAMONDS)
                         for (f in 0..3) {
                             EmptyCardSlot(
                                 label = "A",
                                 isOledMode = isOledMode,
-                                tint = if (suitHints[f].isRed) Color(0xFFEF4444).copy(alpha = 0.55f) else null,
                                 onClick = remember(f, onFoundationClick) { { onFoundationClick(f) } },
                                 modifier = Modifier
                                     .width(cardWidth)

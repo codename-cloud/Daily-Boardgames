@@ -22,6 +22,11 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import java.util.concurrent.TimeUnit
 
+data class ChangelogEntry(
+    val text: String,
+    val indentLevel: Int = 0
+)
+
 data class GitHubBuildInfo(
     val repo: String,
     val source: Source,
@@ -32,6 +37,7 @@ data class GitHubBuildInfo(
     val commitSha: String?,
     val notes: String,
     val changelogItems: List<String> = emptyList(),
+    val changelogEntries: List<ChangelogEntry> = changelogItems.map { ChangelogEntry(it) },
     val publishedAt: String,
     val browserUrl: String,
     val apkDownloadUrl: String?
@@ -48,7 +54,8 @@ sealed interface GitHubCheckStatus {
     data class UpToDate(
         val repo: String,
         val latestLabel: String,
-        val changelogItems: List<String> = emptyList()
+        val changelogItems: List<String> = emptyList(),
+        val changelogEntries: List<ChangelogEntry> = changelogItems.map { ChangelogEntry(it) }
     ) : GitHubCheckStatus
 
     data class UpdateAvailable(
@@ -105,22 +112,26 @@ internal data class GitHubWorkflowRunDto(
     val conclusion: String? = null
 )
 
-internal fun formatFriendlyChangelog(rawText: String?): List<String> {
+internal fun formatStructuredChangelog(
+    rawText: String?,
+    isCommitMessage: Boolean = false
+): List<ChangelogEntry> {
     if (rawText.isNullOrBlank()) return emptyList()
-    val items = mutableListOf<String>()
+    val entries = mutableListOf<ChangelogEntry>()
     val seen = mutableSetOf<String>()
-    val conventionalRegex = Regex("""^([a-zA-Z]+)(?:\([^)]+\))?:\s*(.+)$""")
+    val conventionalRegex = Regex(
+        """^(feat|feature|fix|bugfix|perf|refactor|style|ui)(?:\([^)]+\))?:\s*(.+)$""",
+        RegexOption.IGNORE_CASE
+    )
+    val otherPrefixRegex = Regex("""^([a-zA-Z]+)(?:\([^)]+\))?:\s+(.+)$""")
+    val bulletRegex = Regex("""^\s*[-*•]\s+(.+)$""")
 
-    for (rawLine in rawText.lines()) {
-        var line = rawLine.trim()
-        if (line.isEmpty()) continue
-        if (line.startsWith("#")) continue
-        if (line == "---" || line == "***") continue
+    fun formatLineText(content: String): Pair<String, Boolean>? {
+        val trimmed = content.trim()
+        if (trimmed.isEmpty()) return null
+        if (trimmed.startsWith("#") || trimmed == "---" || trimmed == "***") return null
 
-        line = line.replace(Regex("""^[-*•]\s*"""), "").trim()
-        if (line.isEmpty()) continue
-
-        val lower = line.lowercase()
+        val lower = trimmed.lowercase()
         if (lower.startsWith("co-authored-by:") ||
             lower.startsWith("signed-off-by:") ||
             lower.startsWith("change-id:") ||
@@ -129,31 +140,90 @@ internal fun formatFriendlyChangelog(rawText: String?): List<String> {
             lower.startsWith("automated apk build from workflow run") ||
             Regex("""^build #\d+\s*[•·-]\s*commit\s+[0-9a-f]+$""").matches(lower)
         ) {
-            continue
+            return null
         }
 
-        val match = conventionalRegex.matchEntire(line)
-        val formatted = if (match != null) {
-            val kind = match.groupValues[1].lowercase()
-            val rest = match.groupValues[2].trim().replaceFirstChar { it.uppercaseChar() }
+        val convMatch = conventionalRegex.matchEntire(trimmed)
+        if (convMatch != null) {
+            val kind = convMatch.groupValues[1].lowercase()
+            val rest = convMatch.groupValues[2].trim().replaceFirstChar { it.uppercaseChar() }
             val prefix = when (kind) {
                 "feat", "feature" -> "New: "
                 "fix", "bugfix" -> "Fixed: "
                 "perf", "refactor", "style", "ui" -> "Improved: "
                 else -> ""
             }
-            "$prefix$rest"
-        } else {
-            line.replaceFirstChar { it.uppercaseChar() }
+            return "$prefix$rest" to true
         }
 
-        if (formatted.isNotBlank() && seen.add(formatted.lowercase())) {
-            items.add(formatted)
-            if (items.size >= 12) break
+        val otherMatch = otherPrefixRegex.matchEntire(trimmed)
+        if (otherMatch != null) {
+            val rest = otherMatch.groupValues[2].trim().replaceFirstChar { it.uppercaseChar() }
+            return rest to false
         }
+
+        return trimmed.replaceFirstChar { it.uppercaseChar() } to false
     }
-    return items
+
+    var seenCommitSubject = false
+    var openBodyParagraph = false
+
+    for (rawLine in rawText.lines()) {
+        val leadingWhitespaceCount = rawLine.takeWhile { it == ' ' || it == '\t' }
+            .sumOf { if (it == '\t') 4 else 1 }
+        val trimmed = rawLine.trim()
+        if (trimmed.isEmpty() || trimmed.startsWith("#") || trimmed == "---" || trimmed == "***") {
+            openBodyParagraph = false
+            continue
+        }
+
+        val bulletMatch = bulletRegex.matchEntire(rawLine)
+        val isBullet = bulletMatch != null
+        val content = if (bulletMatch != null) bulletMatch.groupValues[1].trim() else trimmed
+
+        val (formatted, isConventional) = formatLineText(content) ?: run {
+            openBodyParagraph = false
+            continue
+        }
+
+        if (isCommitMessage) {
+            if (!seenCommitSubject) {
+                if (seen.add(formatted.lowercase())) {
+                    entries.add(ChangelogEntry(text = formatted, indentLevel = 0))
+                    seenCommitSubject = true
+                }
+                openBodyParagraph = false
+            } else if (isConventional) {
+                if (seen.add(formatted.lowercase())) {
+                    entries.add(ChangelogEntry(text = formatted, indentLevel = 0))
+                }
+                openBodyParagraph = false
+            } else if (!isBullet && openBodyParagraph && entries.isNotEmpty() && entries.last().indentLevel > 0) {
+                val prev = entries.removeAt(entries.lastIndex)
+                val merged = "${prev.text} $content"
+                seen.remove(prev.text.lowercase())
+                seen.add(merged.lowercase())
+                entries.add(prev.copy(text = merged))
+            } else {
+                if (seen.add(formatted.lowercase())) {
+                    entries.add(ChangelogEntry(text = formatted, indentLevel = 1))
+                    openBodyParagraph = !isBullet
+                }
+            }
+        } else {
+            val indentLevel = if (leadingWhitespaceCount >= 2 && entries.isNotEmpty()) 1 else 0
+            if (seen.add(formatted.lowercase())) {
+                entries.add(ChangelogEntry(text = formatted, indentLevel = indentLevel))
+            }
+        }
+
+        if (entries.size >= 16) break
+    }
+    return entries
 }
+
+internal fun formatFriendlyChangelog(rawText: String?): List<String> =
+    formatStructuredChangelog(rawText, isCommitMessage = false).map { it.text }
 
 internal fun normalizeGithubRepo(raw: String): String? {
     var trimmed = raw.trim()
@@ -262,7 +332,7 @@ internal object GitHubApiParser {
         val shaMatch = Regex("""commit\s+([0-9a-fA-F]{7,40})""").find(dto.body.orEmpty())
 
         val bodyText = dto.body?.trim().orEmpty()
-        val changelog = formatFriendlyChangelog(bodyText)
+        val changelogEntries = formatStructuredChangelog(bodyText, isCommitMessage = false)
 
         return GitHubBuildInfo(
             repo = repo,
@@ -277,7 +347,8 @@ internal object GitHubApiParser {
             versionCode = derivedVersionCode,
             commitSha = shaMatch?.groupValues?.get(1),
             notes = bodyText,
-            changelogItems = changelog,
+            changelogItems = changelogEntries.map { it.text },
+            changelogEntries = changelogEntries,
             publishedAt = dto.publishedAt.orEmpty(),
             browserUrl = htmlUrl,
             apkDownloadUrl = apkUrl
@@ -293,7 +364,7 @@ internal object GitHubApiParser {
         val commitMessage = run.headCommit?.message?.takeIf { it.isNotBlank() }
             ?: run.displayTitle?.takeIf { it.isNotBlank() }
             ?: ""
-        val changelog = formatFriendlyChangelog(commitMessage)
+        val changelogEntries = formatStructuredChangelog(commitMessage, isCommitMessage = true)
         return GitHubBuildInfo(
             repo = repo,
             source = GitHubBuildInfo.Source.WORKFLOW_RUN,
@@ -305,7 +376,8 @@ internal object GitHubApiParser {
             versionCode = if (run.runNumber > 0L) (11L + run.runNumber).toInt() else null,
             commitSha = run.headSha,
             notes = commitMessage.ifBlank { "Built by GitHub Actions workflow run #${run.runNumber}." },
-            changelogItems = changelog,
+            changelogItems = changelogEntries.map { it.text },
+            changelogEntries = changelogEntries,
             publishedAt = run.updatedAt.orEmpty(),
             browserUrl = htmlUrl,
             apkDownloadUrl = null
@@ -393,7 +465,8 @@ object GitHubUpdateManager {
                 GitHubCheckStatus.UpToDate(
                     repo = repo,
                     latestLabel = latestBuild.tagOrVersion,
-                    changelogItems = latestBuild.changelogItems
+                    changelogItems = latestBuild.changelogItems,
+                    changelogEntries = latestBuild.changelogEntries
                 )
             }
         } catch (e: Exception) {

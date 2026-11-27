@@ -231,10 +231,13 @@ fun GitHubUpdateDialog(
                                     }
                                 }
 
-                                if (status.changelogItems.isNotEmpty()) {
+                                val upToDateEntries = status.changelogEntries.ifEmpty {
+                                    status.changelogItems.map { ChangelogEntry(it) }
+                                }
+                                if (upToDateEntries.isNotEmpty()) {
                                     ChangelogListSection(
                                         heading = "Latest Build Changes",
-                                        items = status.changelogItems,
+                                        items = upToDateEntries,
                                         colors = colors,
                                         isOledMode = isOledMode
                                     )
@@ -276,8 +279,12 @@ fun GitHubUpdateDialog(
                                     }
                                 }
 
-                                val displayItems = build.changelogItems.ifEmpty {
-                                    build.notes.takeIf { it.isNotBlank() }?.let { listOf(it) }.orEmpty()
+                                val displayItems = build.changelogEntries.ifEmpty {
+                                    build.changelogItems.map { ChangelogEntry(it) }.ifEmpty {
+                                        build.notes.takeIf { it.isNotBlank() }
+                                            ?.let { listOf(ChangelogEntry(it)) }
+                                            .orEmpty()
+                                    }
                                 }
                                 if (displayItems.isNotEmpty()) {
                                     ChangelogListSection(
@@ -401,7 +408,7 @@ fun GitHubUpdateDialog(
 @Composable
 private fun ChangelogListSection(
     heading: String,
-    items: List<String>,
+    items: List<ChangelogEntry>,
     colors: ArcadeThemeColors,
     isOledMode: Boolean
 ) {
@@ -423,21 +430,23 @@ private fun ChangelogListSection(
             color = colors.primaryText
         )
         items.forEach { entry ->
+            val isSubBullet = entry.indentLevel > 0
             Row(
+                modifier = Modifier.padding(start = if (isSubBullet) 16.dp else 0.dp),
                 horizontalArrangement = Arrangement.spacedBy(6.dp),
                 verticalAlignment = Alignment.Top
             ) {
                 Text(
-                    text = "•",
-                    fontSize = 12.5.sp,
+                    text = if (isSubBullet) "◦" else "•",
+                    fontSize = if (isSubBullet) 11.5.sp else 12.5.sp,
                     fontWeight = FontWeight.Bold,
-                    color = Color(0xFF60A5FA)
+                    color = if (isSubBullet) Color(0xFF60A5FA).copy(alpha = 0.75f) else Color(0xFF60A5FA)
                 )
                 Text(
-                    text = entry,
-                    fontSize = 12.sp,
-                    lineHeight = 17.sp,
-                    color = colors.secondaryText
+                    text = entry.text,
+                    fontSize = if (isSubBullet) 11.5.sp else 12.sp,
+                    lineHeight = if (isSubBullet) 16.5.sp else 17.sp,
+                    color = if (isSubBullet) colors.secondaryText else colors.primaryText.copy(alpha = 0.9f)
                 )
             }
         }

@@ -4,9 +4,11 @@ import android.content.Context
 import android.content.ContextWrapper
 import android.content.SharedPreferences
 import com.example.common.AppSettingsStore
+import com.example.common.ChangelogEntry
 import com.example.common.GitHubApiParser
 import com.example.common.GitHubBuildInfo
 import com.example.common.formatFriendlyChangelog
+import com.example.common.formatStructuredChangelog
 import com.example.common.isRemoteBuildNewer
 import com.example.common.normalizeGithubRepo
 import org.junit.Assert.assertEquals
@@ -161,6 +163,54 @@ class GitHubUpdaterTest {
                 "Improved landscape layout"
             ),
             formatFriendlyChangelog(releaseNotes)
+        )
+    }
+
+    @Test
+    fun testFormatStructuredChangelogPreservesIndentedReleaseSubBullets() {
+        val releaseNotes = """
+            ### What's New in Build #22
+            - Optimize audio and haptic performance
+              - Move SoundManager and HapticManager operations to dedicated background threads to prevent UI stutters.
+            - Fix DailyStreakDialog clipping in landscape
+
+            ---
+            Build #22 • commit abc1234
+        """.trimIndent()
+
+        assertEquals(
+            listOf(
+                ChangelogEntry("Optimize audio and haptic performance", indentLevel = 0),
+                ChangelogEntry(
+                    "Move SoundManager and HapticManager operations to dedicated background threads to prevent UI stutters.",
+                    indentLevel = 1
+                ),
+                ChangelogEntry("Fix DailyStreakDialog clipping in landscape", indentLevel = 0)
+            ),
+            formatStructuredChangelog(releaseNotes, isCommitMessage = false)
+        )
+    }
+
+    @Test
+    fun testFormatStructuredChangelogIndentsCommitBodyExplanations() {
+        val commitMessage = """
+            Optimize audio and haptic performance
+
+            Move SoundManager and HapticManager operations to dedicated
+            background threads to prevent UI stutters.
+            - Throttle rapid tones during auto-clear
+        """.trimIndent()
+
+        assertEquals(
+            listOf(
+                ChangelogEntry("Optimize audio and haptic performance", indentLevel = 0),
+                ChangelogEntry(
+                    "Move SoundManager and HapticManager operations to dedicated background threads to prevent UI stutters.",
+                    indentLevel = 1
+                ),
+                ChangelogEntry("Throttle rapid tones during auto-clear", indentLevel = 1)
+            ),
+            formatStructuredChangelog(commitMessage, isCommitMessage = true)
         )
     }
 

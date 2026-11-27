@@ -139,14 +139,26 @@ jobs:
                   return [out]
               return [head_msg] if head_msg else []
 
-          def clean_line(line):
-              line = re.sub(r'^\s*[-*•]\s*', '', line).strip()
-              if not line:
-                  return None
-              low = line.lower()
-              if low.startswith(("co-authored-by:", "signed-off-by:", "change-id:", "merge pull request ", "merge branch ")):
-                  return None
-              m = re.match(r'^([a-zA-Z]+)(?:\([^)]+\))?:\s*(.+)$', line)
+          conventional_re = re.compile(
+              r'^(feat|feature|fix|bugfix|perf|refactor|style|ui)(?:\([^)]+\))?:\s*(.+)$',
+              re.IGNORECASE
+          )
+          other_prefix_re = re.compile(r'^([a-zA-Z]+)(?:\([^)]+\))?:\s+(.+)$')
+          bullet_re = re.compile(r'^\s*[-*•]\s+(.+)$')
+          skip_re = re.compile(
+              r'^(co-authored-by:|signed-off-by:|change-id:|merge pull request |merge branch )',
+              re.IGNORECASE
+          )
+
+          def format_text(text):
+              text = text.strip()
+              if not text:
+                  return None, False
+              if text.startswith("#") or text in ("---", "***"):
+                  return None, False
+              if skip_re.match(text):
+                  return None, False
+              m = conventional_re.match(text)
               if m:
                   kind, rest = m.group(1).lower(), m.group(2).strip()
                   rest = rest[:1].upper() + rest[1:] if rest else rest
@@ -160,24 +172,66 @@ jobs:
                       "style": "Improved: ",
                       "ui": "Improved: ",
                   }
-                  return f"{prefix_map.get(kind, '')}{rest}"
-              return line[:1].upper() + line[1:]
+                  return f"{prefix_map.get(kind, '')}{rest}", True
+              m2 = other_prefix_re.match(text)
+              if m2:
+                  rest = m2.group(2).strip()
+                  return (rest[:1].upper() + rest[1:] if rest else rest), False
+              return text[:1].upper() + text[1:], False
+
+          def parse_commit_entries(msg):
+              entries = []
+              seen_subject = False
+              open_body_paragraph = False
+
+              for raw in msg.splitlines():
+                  stripped = raw.strip()
+                  if not stripped or stripped.startswith("#") or stripped in ("---", "***"):
+                      open_body_paragraph = False
+                      continue
+
+                  bullet_match = bullet_re.match(raw)
+                  is_bullet = bullet_match is not None
+                  content = bullet_match.group(1).strip() if is_bullet else stripped
+
+                  formatted, is_conventional = format_text(content)
+                  if not formatted:
+                      open_body_paragraph = False
+                      continue
+
+                  if not seen_subject:
+                      entries.append([0, formatted])
+                      seen_subject = True
+                      open_body_paragraph = False
+                  elif is_conventional:
+                      entries.append([0, formatted])
+                      open_body_paragraph = False
+                  elif not is_bullet and open_body_paragraph and entries and entries[-1][0] == 1:
+                      prev_text = entries[-1][1]
+                      joiner = " " if prev_text.endswith((".", "!", "?", ":", ";")) else " "
+                      entries[-1][1] = f"{prev_text}{joiner}{content}"
+                  else:
+                      entries.append([1, formatted])
+                      open_body_paragraph = not is_bullet
+
+              return [(indent, text) for indent, text in entries]
 
           bullets = []
           seen = set()
           for msg in git_messages():
-              for raw in msg.splitlines():
-                  cleaned = clean_line(raw)
-                  if cleaned and cleaned.lower() not in seen:
-                      seen.add(cleaned.lower())
-                      bullets.append(cleaned)
+              for indent, text in parse_commit_entries(msg):
+                  key = text.lower()
+                  if key not in seen:
+                      seen.add(key)
+                      bullets.append((indent, text))
 
           if not bullets:
-              bullets.append(f"Automated APK build from workflow run #{run_number}.")
+              bullets.append((0, f"Automated APK build from workflow run #{run_number}."))
 
           print(f"### What's New in Build #{run_number}")
-          for b in bullets[:12]:
-              print(f"- {b}")
+          for indent, text in bullets[:16]:
+              prefix = "  - " if indent > 0 else "- "
+              print(f"{prefix}{text}")
           print("")
           print("---")
           print(f"Build #{run_number} • commit {sha}")

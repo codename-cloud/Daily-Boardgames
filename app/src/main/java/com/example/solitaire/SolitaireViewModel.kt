@@ -245,9 +245,9 @@ class SolitaireViewModel(application: Application) : AndroidViewModel(applicatio
             while (isActive) {
                 val current = _uiState.value.game
                 val next = SolitaireEngine.stepAutoComplete(current) ?: break
-                applyMove(next, isCardPlace = true, recordUndo = false)
+                applyMove(next, isCardPlace = true, recordUndo = false, performHaptic = false)
                 if (next.isWon) break
-                delay(75)
+                delay(90)
             }
             _uiState.update { it.copy(isAutoCompleting = false) }
         }
@@ -294,7 +294,8 @@ class SolitaireViewModel(application: Application) : AndroidViewModel(applicatio
     private fun applyMove(
         next: SolitaireGameState,
         isCardPlace: Boolean,
-        recordUndo: Boolean = true
+        recordUndo: Boolean = true,
+        performHaptic: Boolean = true
     ) {
         val currentState = _uiState.value
         if (recordUndo) {
@@ -307,7 +308,7 @@ class SolitaireViewModel(application: Application) : AndroidViewModel(applicatio
         if (currentState.isSoundEnabled) {
             if (isCardPlace) soundManager.playFlag() else soundManager.playClick()
         }
-        if (currentState.isHapticsEnabled && isCardPlace) {
+        if (performHaptic && currentState.isHapticsEnabled && isCardPlace) {
             hapticManager.performRevealHaptic()
         }
 

@@ -84,8 +84,9 @@ fun PlayingCardView(
         "Face-down card"
     }
 
+    val hasExplicitSize = cardWidth != Dp.Unspecified && cardHeight != Dp.Unspecified
     val containerModifier = modifier
-        .aspectRatio(0.70f)
+        .then(if (hasExplicitSize) Modifier else Modifier.aspectRatio(0.70f))
         .then(
             if (isSelected) {
                 Modifier.shadow(
@@ -110,7 +111,7 @@ fun PlayingCardView(
             }
         )
 
-    if (cardWidth != Dp.Unspecified && cardHeight != Dp.Unspecified) {
+    if (hasExplicitSize) {
         Box(modifier = containerModifier) {
             PlayingCardContent(
                 card = card,

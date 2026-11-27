@@ -315,6 +315,11 @@ private const val SOL_TAP_WASTE = 2
 private const val SOL_TAP_FOUNDATION = 3
 private const val SOL_TAP_TABLEAU = 4
 
+private class PrevSolitaireStateRef(
+    var dealGen: Int = -1,
+    var game: SolitaireGameState? = null
+)
+
 @Composable
 private fun SolitairePlayfield(
     game: SolitaireGameState,
@@ -328,12 +333,11 @@ private fun SolitairePlayfield(
     onTableauCardClick: (Int, Int) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val prevDealAndGameState = remember { mutableStateOf<Pair<Int, SolitaireGameState>?>(null) }
-    val prevGame = prevDealAndGameState.value
-        ?.takeIf { it.first == dealGeneration }
-        ?.second
+    val prevRef = remember { PrevSolitaireStateRef() }
+    val prevGame = if (prevRef.dealGen == dealGeneration) prevRef.game else null
     SideEffect {
-        prevDealAndGameState.value = dealGeneration to game
+        prevRef.dealGen = dealGeneration
+        prevRef.game = game
     }
 
     BoxWithConstraints(
@@ -509,7 +513,7 @@ private fun SolitairePlayfield(
                 for (f in 0..3) {
                     val foundationX = foundationsStartX + (cardWidth + gap) * f
                     val foundationOffsetPx = with(density) { Offset(foundationX.toPx(), 0f) }
-                    val visibleFoundation = game.foundations[f].takeLast(2)
+                    val visibleFoundation = game.foundations[f].takeLast(4)
                     visibleFoundation.forEachIndexed { idx, card ->
                         val isTop = idx == visibleFoundation.lastIndex
                         add(
@@ -518,7 +522,7 @@ private fun SolitairePlayfield(
                                     card = card,
                                     pileKey = "foundation_$f",
                                     targetOffsetPx = foundationOffsetPx,
-                                    restZIndex = 5f + idx,
+                                    restZIndex = 5f + card.rank.value * 0.01f,
                                     isSelected = isTop && selection == SolitaireSelection.Foundation(f)
                                 ),
                                 tapType = if (isTop) SOL_TAP_FOUNDATION else SOL_TAP_NONE,

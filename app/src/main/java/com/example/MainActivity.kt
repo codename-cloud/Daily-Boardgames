@@ -70,75 +70,19 @@ class MainActivity : ComponentActivity() {
             MyApplicationTheme(darkTheme = effectiveIsDark) {
                 var activeGame by rememberSaveable { mutableStateOf<GameDestination?>(null) }
 
-                val mineState by minesweeperViewModel.uiState.collectAsStateWithLifecycle()
-                val solitaireState by solitaireViewModel.uiState.collectAsStateWithLifecycle()
-                val freeCellState by freeCellViewModel.uiState.collectAsStateWithLifecycle()
-                val sudokuState by sudokuViewModel.uiState.collectAsStateWithLifecycle()
-
                 Crossfade(
                     targetState = activeGame,
                     animationSpec = tween(durationMillis = 200),
                     label = "game_navigation"
                 ) { destination ->
                     when (destination) {
-                        null -> {
-                            val mineWins = mineState.stats.values.sumOf { it.won }
-                            val sudokuWins = sudokuState.stats.values.sumOf { it.won }
-
-                            val menuEntries = listOf(
-                                GameMenuEntry(
-                                    destination = GameDestination.MINESWEEPER,
-                                    title = "Minesweeper",
-                                    subtitle = "Guess-Free Grid Logic",
-                                    statsSummary = "Wins: $mineWins • ${mineState.difficulty.name}",
-                                    dailyStreak = mineState.dailyStreak,
-                                    isInProgress = mineState.status == GameStatus.RUNNING,
-                                    accentColor = Color(0xFF2563EB),
-                                    imageRes = R.drawable.simple_minesweeper_thumb_1795482654311,
-                                    testTag = "game_card_minesweeper"
-                                ),
-                                GameMenuEntry(
-                                    destination = GameDestination.SOLITAIRE,
-                                    title = "Solitaire",
-                                    subtitle = "Klondike • Draw 1 & 3",
-                                    statsSummary = "Wins: ${solitaireState.stats.won}" +
-                                        (solitaireState.stats.bestTimeSeconds?.let { " • Best ${it}s" } ?: ""),
-                                    dailyStreak = solitaireState.dailyStreak,
-                                    isInProgress = solitaireState.status == GameStatus.RUNNING,
-                                    accentColor = Color(0xFF16A34A),
-                                    imageRes = R.drawable.simple_solitaire_thumb_1795482654755,
-                                    testTag = "game_card_solitaire"
-                                ),
-                                GameMenuEntry(
-                                    destination = GameDestination.FREECELL,
-                                    title = "FreeCell",
-                                    subtitle = "4 Cells • Open Strategy",
-                                    statsSummary = "Wins: ${freeCellState.stats.won}" +
-                                        (freeCellState.stats.bestTimeSeconds?.let { " • Best ${it}s" } ?: ""),
-                                    dailyStreak = freeCellState.dailyStreak,
-                                    isInProgress = freeCellState.status == GameStatus.RUNNING,
-                                    accentColor = Color(0xFF0D9488),
-                                    imageRes = R.drawable.simple_freecell_thumb_1795482655874,
-                                    testTag = "game_card_freecell"
-                                ),
-                                GameMenuEntry(
-                                    destination = GameDestination.SUDOKU,
-                                    title = "Sudoku",
-                                    subtitle = "9×9 Unique Number Grid",
-                                    statsSummary = "Solved: $sudokuWins • ${sudokuState.difficulty.label}",
-                                    dailyStreak = sudokuState.dailyStreak,
-                                    isInProgress = sudokuState.status == GameStatus.RUNNING,
-                                    accentColor = Color(0xFFD97706),
-                                    imageRes = R.drawable.simple_sudoku_thumb_1795482655682,
-                                    testTag = "game_card_sudoku"
-                                )
-                            )
-
-                            StartScreen(
-                                games = menuEntries,
-                                onSelectGame = { selected -> activeGame = selected }
-                            )
-                        }
+                        null -> HomeDestinationContent(
+                            minesweeperViewModel = minesweeperViewModel,
+                            solitaireViewModel = solitaireViewModel,
+                            freeCellViewModel = freeCellViewModel,
+                            sudokuViewModel = sudokuViewModel,
+                            onSelectGame = { selected -> activeGame = selected }
+                        )
 
                         GameDestination.MINESWEEPER -> MinesweeperScreen(
                             viewModel = minesweeperViewModel,
@@ -164,4 +108,75 @@ class MainActivity : ComponentActivity() {
             }
         }
     }
+}
+
+@androidx.compose.runtime.Composable
+private fun HomeDestinationContent(
+    minesweeperViewModel: MinesweeperViewModel,
+    solitaireViewModel: SolitaireViewModel,
+    freeCellViewModel: FreeCellViewModel,
+    sudokuViewModel: SudokuViewModel,
+    onSelectGame: (GameDestination) -> Unit
+) {
+    val mineState by minesweeperViewModel.uiState.collectAsStateWithLifecycle()
+    val solitaireState by solitaireViewModel.uiState.collectAsStateWithLifecycle()
+    val freeCellState by freeCellViewModel.uiState.collectAsStateWithLifecycle()
+    val sudokuState by sudokuViewModel.uiState.collectAsStateWithLifecycle()
+
+    val mineWins = mineState.stats.values.sumOf { it.won }
+    val sudokuWins = sudokuState.stats.values.sumOf { it.won }
+
+    val menuEntries = listOf(
+        GameMenuEntry(
+            destination = GameDestination.MINESWEEPER,
+            title = "Minesweeper",
+            subtitle = "Guess-Free Grid Logic",
+            statsSummary = "Wins: $mineWins • ${mineState.difficulty.name}",
+            dailyStreak = mineState.dailyStreak,
+            isInProgress = mineState.status == GameStatus.RUNNING,
+            accentColor = Color(0xFF2563EB),
+            imageRes = R.drawable.simple_minesweeper_thumb_1795482654311,
+            testTag = "game_card_minesweeper"
+        ),
+        GameMenuEntry(
+            destination = GameDestination.SOLITAIRE,
+            title = "Solitaire",
+            subtitle = "Klondike • Draw 1 & 3",
+            statsSummary = "Wins: ${solitaireState.stats.won}" +
+                (solitaireState.stats.bestTimeSeconds?.let { " • Best ${it}s" } ?: ""),
+            dailyStreak = solitaireState.dailyStreak,
+            isInProgress = solitaireState.status == GameStatus.RUNNING,
+            accentColor = Color(0xFF16A34A),
+            imageRes = R.drawable.simple_solitaire_thumb_1795482654755,
+            testTag = "game_card_solitaire"
+        ),
+        GameMenuEntry(
+            destination = GameDestination.FREECELL,
+            title = "FreeCell",
+            subtitle = "4 Cells • Open Strategy",
+            statsSummary = "Wins: ${freeCellState.stats.won}" +
+                (freeCellState.stats.bestTimeSeconds?.let { " • Best ${it}s" } ?: ""),
+            dailyStreak = freeCellState.dailyStreak,
+            isInProgress = freeCellState.status == GameStatus.RUNNING,
+            accentColor = Color(0xFF0D9488),
+            imageRes = R.drawable.simple_freecell_thumb_1795482655874,
+            testTag = "game_card_freecell"
+        ),
+        GameMenuEntry(
+            destination = GameDestination.SUDOKU,
+            title = "Sudoku",
+            subtitle = "9×9 Unique Number Grid",
+            statsSummary = "Solved: $sudokuWins • ${sudokuState.difficulty.label}",
+            dailyStreak = sudokuState.dailyStreak,
+            isInProgress = sudokuState.status == GameStatus.RUNNING,
+            accentColor = Color(0xFFD97706),
+            imageRes = R.drawable.simple_sudoku_thumb_1795482655682,
+            testTag = "game_card_sudoku"
+        )
+    )
+
+    StartScreen(
+        games = menuEntries,
+        onSelectGame = onSelectGame
+    )
 }

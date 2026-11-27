@@ -1,9 +1,9 @@
 package com.example.cards
 
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.VectorConverter
-import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -29,9 +29,12 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.zIndex
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
+
+private val CardGlideEasing = CubicBezierEasing(0.22f, 1f, 0.36f, 1f)
 
 @Immutable
 data class BoardCardPlacement(
@@ -78,13 +81,15 @@ fun AnimatedBoardCard(
         mutableStateOf(if (placement.entranceFlip) false else placement.card.isFaceUp)
     }
     var hasAnimatedEntrance by remember { mutableStateOf(false) }
-    var isFlightActive by remember { mutableStateOf(placement.entranceOriginPx != null) }
 
     val pileChangedSynchronously =
         dealGeneration == lastDealGen &&
             boardSizeKey == lastBoardSizeKey &&
             placement.pileKey != lastPileKey
-    val inFlight = isFlightActive || pileChangedSynchronously
+    val isAnimating by remember {
+        derivedStateOf { posAnim.isRunning || flipAnim.isRunning }
+    }
+    val inFlight = isAnimating || pileChangedSynchronously
 
     LaunchedEffect(
         placement.targetOffsetPx,
@@ -99,7 +104,6 @@ fun AnimatedBoardCard(
             lastPileKey = placement.pileKey
             lastFaceUp = placement.card.isFaceUp
             hasAnimatedEntrance = true
-            isFlightActive = false
             posAnim.snapTo(placement.targetOffsetPx)
             flipAnim.snapTo(if (placement.card.isFaceUp) 0f else 180f)
             return@LaunchedEffect
@@ -113,48 +117,32 @@ fun AnimatedBoardCard(
         lastPileKey = placement.pileKey
         lastFaceUp = placement.card.isFaceUp
 
-        if (pileChanged || isEntrance) {
-            isFlightActive = true
-        }
-
         if (isEntrance && placement.entranceDelayMs > 0) {
             delay(placement.entranceDelayMs.toLong())
         }
 
-        val moveJob = if (posAnim.value != placement.targetOffsetPx) {
-            launch {
-                val spec = if (pileChanged || isEntrance) {
-                    spring(
-                        dampingRatio = 0.90f,
-                        stiffness = 320f,
-                        visibilityThreshold = Offset(0.5f, 0.5f)
-                    )
-                } else {
-                    spring(
-                        dampingRatio = 0.95f,
-                        stiffness = 400f,
-                        visibilityThreshold = Offset(0.5f, 0.5f)
-                    )
-                }
+        if (posAnim.value != placement.targetOffsetPx) {
+            val moveSpec = if (pileChanged || isEntrance) {
+                tween<Offset>(durationMillis = 210, easing = CardGlideEasing)
+            } else {
+                tween<Offset>(durationMillis = 160, easing = FastOutSlowInEasing)
+            }
+            launch(start = CoroutineStart.UNDISPATCHED) {
                 posAnim.animateTo(
                     targetValue = placement.targetOffsetPx,
-                    animationSpec = spec
+                    animationSpec = moveSpec
                 )
             }
-        } else null
+        }
 
-        val flipJob = if (faceChanged || (isEntrance && placement.entranceFlip)) {
-            launch {
+        if (faceChanged || (isEntrance && placement.entranceFlip)) {
+            launch(start = CoroutineStart.UNDISPATCHED) {
                 flipAnim.animateTo(
                     targetValue = if (placement.card.isFaceUp) 0f else 180f,
-                    animationSpec = tween(durationMillis = 240, easing = FastOutSlowInEasing)
+                    animationSpec = tween(durationMillis = 200, easing = FastOutSlowInEasing)
                 )
             }
-        } else null
-
-        moveJob?.join()
-        flipJob?.join()
-        isFlightActive = false
+        }
     }
 
     // Only invalidates composition once at the 90-degree midpoint of a flip, never per frame

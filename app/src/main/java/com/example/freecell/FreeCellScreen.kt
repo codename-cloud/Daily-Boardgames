@@ -416,7 +416,7 @@ private fun FreeCellPlayfield(
 
                 for (f in 0..3) {
                     val targetPx = with(density) { Offset((colStep * (4 + f)).toPx(), 0f) }
-                    val visibleFoundation = game.foundations[f].takeLast(2)
+                    val visibleFoundation = game.foundations[f].takeLast(4)
                     visibleFoundation.forEachIndexed { idx, card ->
                         val isTop = idx == visibleFoundation.lastIndex
                         add(
@@ -425,7 +425,7 @@ private fun FreeCellPlayfield(
                                     card = card,
                                     pileKey = "foundation_$f",
                                     targetOffsetPx = targetPx,
-                                    restZIndex = 5f + idx,
+                                    restZIndex = 5f + card.rank.value * 0.01f,
                                     isSelected = isTop && selection == FreeCellSelection.Foundation(f)
                                 ),
                                 tapType = if (isTop) FC_TAP_FOUNDATION else FC_TAP_NONE,

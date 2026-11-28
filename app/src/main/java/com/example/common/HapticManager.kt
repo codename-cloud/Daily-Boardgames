@@ -1,4 +1,4 @@
-package com.example.minesweeper.haptic
+package com.example.common
 
 import android.content.Context
 import android.os.Build

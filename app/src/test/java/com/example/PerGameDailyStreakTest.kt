@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.ContextWrapper
 import android.content.SharedPreferences
 import com.example.common.AppSettingsStore
+import com.example.common.Handedness
 import com.example.common.ThemeMode
 import com.example.common.tutorialStepsFor
 import com.example.home.GameDestination
@@ -38,6 +39,9 @@ class PerGameDailyStreakTest {
         assertEquals(0, AppSettingsStore.getDailyStreak(GameDestination.FREECELL).currentStreak)
         assertFalse(AppSettingsStore.getDailyStreak(GameDestination.FREECELL).isWinAwardedToday)
 
+        assertEquals(0, AppSettingsStore.getDailyStreak(GameDestination.SPIDER_SOLITAIRE).currentStreak)
+        assertFalse(AppSettingsStore.getDailyStreak(GameDestination.SPIDER_SOLITAIRE).isWinAwardedToday)
+
         assertEquals(0, AppSettingsStore.getDailyStreak(GameDestination.SUDOKU).currentStreak)
         assertFalse(AppSettingsStore.getDailyStreak(GameDestination.SUDOKU).isWinAwardedToday)
 
@@ -46,6 +50,7 @@ class PerGameDailyStreakTest {
         assertTrue(isFirstSolitaire)
         assertEquals(1, AppSettingsStore.getDailyStreak(GameDestination.SOLITAIRE).currentStreak)
         assertEquals(0, AppSettingsStore.getDailyStreak(GameDestination.FREECELL).currentStreak)
+        assertEquals(0, AppSettingsStore.getDailyStreak(GameDestination.SPIDER_SOLITAIRE).currentStreak)
         assertEquals(0, AppSettingsStore.getDailyStreak(GameDestination.SUDOKU).currentStreak)
     }
 
@@ -125,7 +130,7 @@ class PerGameDailyStreakTest {
     }
 
     @Test
-    fun testDailySweepCelebrationTriggersOnceAfterAllFourGamesWonToday() {
+    fun testDailySweepCelebrationTriggersOnceAfterAllTrackedGamesWonToday() {
         val fakeContext = InMemoryPrefsContext()
         AppSettingsStore.init(fakeContext)
 
@@ -134,9 +139,10 @@ class PerGameDailyStreakTest {
         AppSettingsStore.recordDailyWin(fakeContext, GameDestination.MINESWEEPER)
         AppSettingsStore.recordDailyWin(fakeContext, GameDestination.SOLITAIRE)
         AppSettingsStore.recordDailyWin(fakeContext, GameDestination.FREECELL)
+        AppSettingsStore.recordDailyWin(fakeContext, GameDestination.SPIDER_SOLITAIRE)
         assertFalse(AppSettingsStore.consumeDailySweepCelebrationIfReady(fakeContext))
 
-        // 4th daily win completes 4/4
+        // 5th daily win completes 5/5
         AppSettingsStore.recordDailyWin(fakeContext, GameDestination.SUDOKU)
         assertTrue(AppSettingsStore.consumeDailySweepCelebrationIfReady(fakeContext))
 
@@ -147,6 +153,59 @@ class PerGameDailyStreakTest {
         AppSettingsStore.resetForTesting()
         AppSettingsStore.init(fakeContext)
         assertFalse(AppSettingsStore.consumeDailySweepCelebrationIfReady(fakeContext))
+    }
+
+    @Test
+    fun testDailyWinsSelectionExcludesGamesAndPersistsAcrossRestart() {
+        val fakeContext = InMemoryPrefsContext()
+        AppSettingsStore.init(fakeContext)
+
+        // All games enabled by default
+        assertEquals(GameDestination.entries.toSet(), AppSettingsStore.settings.value.dailyWinsGames)
+
+        // Exclude Sudoku from Daily Wins
+        AppSettingsStore.setGameCountsForDailyWins(fakeContext, GameDestination.SUDOKU, false)
+        assertFalse(GameDestination.SUDOKU in AppSettingsStore.settings.value.dailyWinsGames)
+        assertEquals(4, AppSettingsStore.settings.value.dailyWinsGames.size)
+
+        // Winning the remaining 4 games triggers Daily Sweep without winning Sudoku
+        AppSettingsStore.recordDailyWin(fakeContext, GameDestination.MINESWEEPER)
+        AppSettingsStore.recordDailyWin(fakeContext, GameDestination.SOLITAIRE)
+        AppSettingsStore.recordDailyWin(fakeContext, GameDestination.FREECELL)
+        AppSettingsStore.recordDailyWin(fakeContext, GameDestination.SPIDER_SOLITAIRE)
+        assertTrue(AppSettingsStore.consumeDailySweepCelebrationIfReady(fakeContext))
+
+        // Guard prevents disabling the final remaining game
+        AppSettingsStore.setGameCountsForDailyWins(fakeContext, GameDestination.MINESWEEPER, false)
+        AppSettingsStore.setGameCountsForDailyWins(fakeContext, GameDestination.SOLITAIRE, false)
+        AppSettingsStore.setGameCountsForDailyWins(fakeContext, GameDestination.FREECELL, false)
+        AppSettingsStore.setGameCountsForDailyWins(fakeContext, GameDestination.SPIDER_SOLITAIRE, false)
+        assertEquals(setOf(GameDestination.SPIDER_SOLITAIRE), AppSettingsStore.settings.value.dailyWinsGames)
+
+        // Persists across process restart
+        AppSettingsStore.resetForTesting()
+        AppSettingsStore.init(fakeContext)
+        assertEquals(setOf(GameDestination.SPIDER_SOLITAIRE), AppSettingsStore.settings.value.dailyWinsGames)
+    }
+
+    @Test
+    fun testSolitaireAndSpiderHandednessDefaultsAndPersistence() {
+        val fakeContext = InMemoryPrefsContext()
+        AppSettingsStore.init(fakeContext)
+
+        assertEquals(Handedness.LEFT_HANDED, AppSettingsStore.settings.value.solitaireHandedness)
+        assertEquals(Handedness.RIGHT_HANDED, AppSettingsStore.settings.value.spiderHandedness)
+
+        AppSettingsStore.setSolitaireHandedness(fakeContext, Handedness.RIGHT_HANDED)
+        AppSettingsStore.setSpiderHandedness(fakeContext, Handedness.LEFT_HANDED)
+
+        assertEquals(Handedness.RIGHT_HANDED, AppSettingsStore.settings.value.solitaireHandedness)
+        assertEquals(Handedness.LEFT_HANDED, AppSettingsStore.settings.value.spiderHandedness)
+
+        AppSettingsStore.resetForTesting()
+        AppSettingsStore.init(fakeContext)
+        assertEquals(Handedness.RIGHT_HANDED, AppSettingsStore.settings.value.solitaireHandedness)
+        assertEquals(Handedness.LEFT_HANDED, AppSettingsStore.settings.value.spiderHandedness)
     }
 
     private class InMemoryPrefsContext : ContextWrapper(null) {

@@ -29,7 +29,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.minesweeper.data.DailyStreak
+import com.example.common.DailyStreak
 import com.example.minesweeper.data.DifficultyStats
 import com.example.minesweeper.model.DifficultyType
 

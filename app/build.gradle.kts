@@ -12,13 +12,13 @@ android {
   compileSdk = 36
 
   defaultConfig {
-    val ciVersionCode = (project.findProperty("buildVersionCode") as? String)?.toIntOrNull() ?: 11
-    val ciVersionName = (project.findProperty("buildVersionName") as? String)?.takeIf { it.isNotBlank() } ?: "11.0"
+    val ciVersionCode = (project.findProperty("buildVersionCode") as? String)?.toIntOrNull() ?: 1
+    val ciVersionName = (project.findProperty("buildVersionName") as? String)?.takeIf { it.isNotBlank() } ?: "1.0"
     val ciRunNumber = (project.findProperty("buildRunNumber") as? String)?.toLongOrNull() ?: 0L
     val ciCommitSha = (project.findProperty("buildCommitSha") as? String)?.trim()?.replace("\"", "").orEmpty()
     val ciGithubRepo = (project.findProperty("buildGithubRepo") as? String)?.trim()?.replace("\"", "").orEmpty()
 
-    applicationId = "com.aistudio.minesweeper.bvlpmr"
+    applicationId = "com.aistudio.dailyboardgames"
     minSdk = 24
     targetSdk = 36
     versionCode = ciVersionCode

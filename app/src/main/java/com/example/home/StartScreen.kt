@@ -62,15 +62,15 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.common.AppSettingsStore
+import com.example.common.DailyStreak
+import com.example.common.DailyStreakBadge
+import com.example.common.DailyStreakDialog
 import com.example.common.GitHubUpdateDialog
 import com.example.common.GitHubUpdateManager
+import com.example.common.HapticManager
+import com.example.common.SettingsDialog
+import com.example.common.SoundManager
 import com.example.common.rememberArcadeThemeColors
-import com.example.minesweeper.audio.SoundManager
-import com.example.minesweeper.data.DailyStreak
-import com.example.minesweeper.haptic.HapticManager
-import com.example.minesweeper.ui.components.DailyStreakBadge
-import com.example.minesweeper.ui.components.DailyStreakDialog
-import com.example.minesweeper.ui.components.HapticSettingsDialog
 import com.example.ui.theme.JetBrainsMonoFontFamily
 import com.example.ui.theme.LocalIsDarkTheme
 import com.example.ui.theme.OutfitFontFamily
@@ -79,6 +79,7 @@ enum class GameDestination {
     MINESWEEPER,
     SOLITAIRE,
     FREECELL,
+    SPIDER_SOLITAIRE,
     SUDOKU
 }
 
@@ -125,14 +126,17 @@ fun StartScreen(
         }
     }
 
-    val completedTodayCount = games.count { entry ->
+    val trackedGames = games.filter { it.destination in settings.dailyWinsGames }
+        .ifEmpty { games }
+    val completedTodayCount = trackedGames.count { entry ->
         (dailyStreaks[entry.destination] ?: entry.dailyStreak).isWinAwardedToday
     }
+    val totalTrackedGames = trackedGames.size
 
-    LaunchedEffect(completedTodayCount, games.size) {
-        if (games.isNotEmpty() &&
-            completedTodayCount >= games.size &&
-            AppSettingsStore.consumeDailySweepCelebrationIfReady(context, games.size)
+    LaunchedEffect(completedTodayCount, totalTrackedGames, settings.dailyWinsGames) {
+        if (totalTrackedGames > 0 &&
+            completedTodayCount >= totalTrackedGames &&
+            AppSettingsStore.consumeDailySweepCelebrationIfReady(context)
         ) {
             showDailySweepCelebration = true
             if (settings.isSoundEnabled) {
@@ -228,7 +232,7 @@ fun StartScreen(
                         ) {
                             Icon(
                                 imageVector = Icons.Default.Settings,
-                                contentDescription = "Game Settings",
+                                contentDescription = "App Settings",
                                 tint = colors.primaryText
                             )
                         }
@@ -244,7 +248,8 @@ fun StartScreen(
                 contentAlignment = Alignment.TopCenter
             ) {
                 val columns = when {
-                    maxWidth >= 820.dp -> 4
+                    maxWidth >= 900.dp -> 5
+                    maxWidth >= 600.dp -> 3
                     else -> 2
                 }
 
@@ -260,8 +265,7 @@ fun StartScreen(
                 ) {
                     // Daily Wins summary strip across top
                     item(span = { GridItemSpan(columns) }) {
-                        val totalGames = games.size
-                        val allCompleted = totalGames > 0 && completedTodayCount >= totalGames
+                        val allCompleted = totalTrackedGames > 0 && completedTodayCount >= totalTrackedGames
                         val counterBg = when {
                             allCompleted -> Color(0xFF16A34A).copy(alpha = if (isDark) 0.18f else 0.12f)
                             else -> colors.pillInactiveBg
@@ -286,13 +290,23 @@ fun StartScreen(
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Text(
-                                text = "Daily Wins",
-                                fontFamily = OutfitFontFamily,
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 17.sp,
-                                color = colors.primaryText
-                            )
+                            Column {
+                                Text(
+                                    text = "Daily Wins",
+                                    fontFamily = OutfitFontFamily,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 17.sp,
+                                    color = colors.primaryText
+                                )
+                                if (totalTrackedGames < games.size) {
+                                    Text(
+                                        text = "$totalTrackedGames of ${games.size} games selected",
+                                        fontSize = 11.sp,
+                                        color = colors.secondaryText,
+                                        modifier = Modifier.testTag("home_daily_wins_subset_label")
+                                    )
+                                }
+                            }
 
                             val counterPulseScale by animateFloatAsState(
                                 targetValue = if (showDailySweepCelebration) 1.14f else 1f,
@@ -313,7 +327,7 @@ fun StartScreen(
                                 contentAlignment = Alignment.Center
                             ) {
                                 Text(
-                                    text = "$completedTodayCount / $totalGames",
+                                    text = "$completedTodayCount / $totalTrackedGames",
                                     fontSize = 16.sp,
                                     fontWeight = FontWeight.Bold,
                                     fontFamily = JetBrainsMonoFontFamily,
@@ -341,6 +355,8 @@ fun StartScreen(
 
         DailySweepCelebrationOverlay(
             visible = showDailySweepCelebration,
+            completedCount = completedTodayCount,
+            totalCount = totalTrackedGames,
             isOledMode = settings.isOledMode,
             isDark = isDark,
             onFinished = { showDailySweepCelebration = false }
@@ -357,7 +373,8 @@ fun StartScreen(
     }
 
     if (showSettingsDialog) {
-        HapticSettingsDialog(
+        SettingsDialog(
+            title = "App Settings",
             isHapticsEnabled = settings.isHapticsEnabled,
             isFlagHapticsEnabled = settings.isFlagHapticsEnabled,
             hapticStrength = settings.hapticStrength,
@@ -369,7 +386,15 @@ fun StartScreen(
             onSelectHapticStrength = { AppSettingsStore.setHapticStrength(context, it) },
             onTestFlagHaptic = { hapticManager.performFlagHaptic(settings.hapticStrength) },
             onToggleOledMode = { AppSettingsStore.setOledMode(context, it) },
+            showThemeSection = true,
+            showSoundAndHapticsSection = true,
             showFlagHapticsSection = false,
+            showAppUpdatesOption = true,
+            showDailyWinsSelector = true,
+            dailyWinsGames = settings.dailyWinsGames,
+            onToggleDailyWinsGame = { game, enabled ->
+                AppSettingsStore.setGameCountsForDailyWins(context, game, enabled)
+            },
             onOpenAppUpdates = {
                 showSettingsDialog = false
                 showUpdateDialog = true

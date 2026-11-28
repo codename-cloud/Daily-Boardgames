@@ -39,11 +39,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.minesweeper.data.DailyStreak
-import com.example.minesweeper.model.GameStatus
-import com.example.minesweeper.ui.components.DailyStreakBadge
-import com.example.minesweeper.ui.components.DigitalCounter
-import com.example.minesweeper.ui.components.SmileyButton
 import com.example.ui.theme.LocalIsDarkTheme
 
 data class ArcadeThemeColors(

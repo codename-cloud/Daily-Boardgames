@@ -1,4 +1,4 @@
-package com.example.minesweeper.ui.components
+package com.example.common
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border

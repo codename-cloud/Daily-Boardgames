@@ -17,16 +17,18 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.Color
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.common.AppSettingsStore
+import com.example.common.GameStatus
 import com.example.freecell.FreeCellScreen
 import com.example.freecell.FreeCellViewModel
 import com.example.home.GameDestination
 import com.example.home.GameMenuEntry
 import com.example.home.StartScreen
-import com.example.minesweeper.model.GameStatus
 import com.example.minesweeper.ui.MinesweeperScreen
 import com.example.minesweeper.viewmodel.MinesweeperViewModel
 import com.example.solitaire.SolitaireScreen
 import com.example.solitaire.SolitaireViewModel
+import com.example.spider.SpiderScreen
+import com.example.spider.SpiderViewModel
 import com.example.sudoku.SudokuScreen
 import com.example.sudoku.SudokuViewModel
 import com.example.ui.theme.MyApplicationTheme
@@ -35,6 +37,7 @@ class MainActivity : ComponentActivity() {
     private val minesweeperViewModel: MinesweeperViewModel by viewModels()
     private val solitaireViewModel: SolitaireViewModel by viewModels()
     private val freeCellViewModel: FreeCellViewModel by viewModels()
+    private val spiderViewModel: SpiderViewModel by viewModels()
     private val sudokuViewModel: SudokuViewModel by viewModels()
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -80,6 +83,7 @@ class MainActivity : ComponentActivity() {
                             minesweeperViewModel = minesweeperViewModel,
                             solitaireViewModel = solitaireViewModel,
                             freeCellViewModel = freeCellViewModel,
+                            spiderViewModel = spiderViewModel,
                             sudokuViewModel = sudokuViewModel,
                             onSelectGame = { selected -> activeGame = selected }
                         )
@@ -99,6 +103,11 @@ class MainActivity : ComponentActivity() {
                             onBackToHome = { activeGame = null }
                         )
 
+                        GameDestination.SPIDER_SOLITAIRE -> SpiderScreen(
+                            viewModel = spiderViewModel,
+                            onBackToHome = { activeGame = null }
+                        )
+
                         GameDestination.SUDOKU -> SudokuScreen(
                             viewModel = sudokuViewModel,
                             onBackToHome = { activeGame = null }
@@ -115,12 +124,14 @@ private fun HomeDestinationContent(
     minesweeperViewModel: MinesweeperViewModel,
     solitaireViewModel: SolitaireViewModel,
     freeCellViewModel: FreeCellViewModel,
+    spiderViewModel: SpiderViewModel,
     sudokuViewModel: SudokuViewModel,
     onSelectGame: (GameDestination) -> Unit
 ) {
     val mineState by minesweeperViewModel.uiState.collectAsStateWithLifecycle()
     val solitaireState by solitaireViewModel.uiState.collectAsStateWithLifecycle()
     val freeCellState by freeCellViewModel.uiState.collectAsStateWithLifecycle()
+    val spiderState by spiderViewModel.uiState.collectAsStateWithLifecycle()
     val sudokuState by sudokuViewModel.uiState.collectAsStateWithLifecycle()
 
     val mineWins = mineState.stats.values.sumOf { it.won }
@@ -161,6 +172,17 @@ private fun HomeDestinationContent(
             accentColor = Color(0xFF0D9488),
             imageRes = R.drawable.simple_freecell_thumb_1795482655874,
             testTag = "game_card_freecell"
+        ),
+        GameMenuEntry(
+            destination = GameDestination.SPIDER_SOLITAIRE,
+            title = "Spider Solitaire",
+            subtitle = "10 Columns • 1, 2 & 4 Suits",
+            statsSummary = "Wins: ${spiderState.stats.won} • ${spiderState.game.suitMode.label}",
+            dailyStreak = spiderState.dailyStreak,
+            isInProgress = spiderState.status == GameStatus.RUNNING,
+            accentColor = Color(0xFF7C3AED),
+            imageRes = R.drawable.img_game_spider_solitaire,
+            testTag = "game_card_spider_solitaire"
         ),
         GameMenuEntry(
             destination = GameDestination.SUDOKU,

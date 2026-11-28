@@ -4,11 +4,12 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.common.AppSettingsStore
+import com.example.common.DailyStreak
+import com.example.common.GameStatus
+import com.example.common.Handedness
+import com.example.common.HapticManager
+import com.example.common.SoundManager
 import com.example.home.GameDestination
-import com.example.minesweeper.audio.SoundManager
-import com.example.minesweeper.data.DailyStreak
-import com.example.minesweeper.haptic.HapticManager
-import com.example.minesweeper.model.GameStatus
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -30,6 +31,7 @@ data class SolitaireUiState(
     val isOledMode: Boolean = false,
     val isSoundEnabled: Boolean = true,
     val isHapticsEnabled: Boolean = true,
+    val handedness: Handedness = Handedness.LEFT_HANDED,
     val dailyStreak: DailyStreak = DailyStreak(),
     val stats: SolitaireStats = SolitaireStats(),
     val isNewBestTime: Boolean = false,
@@ -68,6 +70,7 @@ class SolitaireViewModel(application: Application) : AndroidViewModel(applicatio
                 isOledMode = settings.isOledMode,
                 isSoundEnabled = settings.isSoundEnabled,
                 isHapticsEnabled = settings.isHapticsEnabled,
+                handedness = settings.solitaireHandedness,
                 dailyStreak = streak,
                 stats = statsRepository.getStats()
             )
@@ -266,6 +269,11 @@ class SolitaireViewModel(application: Application) : AndroidViewModel(applicatio
     fun setHapticsEnabled(enabled: Boolean) {
         AppSettingsStore.setHapticsEnabled(getApplication(), enabled)
         _uiState.update { it.copy(isHapticsEnabled = enabled) }
+    }
+
+    fun setHandedness(handedness: Handedness) {
+        AppSettingsStore.setSolitaireHandedness(getApplication(), handedness)
+        _uiState.update { it.copy(handedness = handedness) }
     }
 
     fun showSettingsDialog(show: Boolean) {

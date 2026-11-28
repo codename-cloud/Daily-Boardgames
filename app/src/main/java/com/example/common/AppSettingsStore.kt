@@ -4,9 +4,6 @@ import android.content.Context
 import android.content.SharedPreferences
 import com.example.BuildConfig
 import com.example.home.GameDestination
-import com.example.minesweeper.data.DailyStreak
-import com.example.minesweeper.data.DailyStreakManager
-import com.example.minesweeper.haptic.HapticStrength
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -18,6 +15,11 @@ enum class ThemeMode {
     DARK
 }
 
+enum class Handedness(val label: String) {
+    LEFT_HANDED("Left-Handed"),
+    RIGHT_HANDED("Right-Handed")
+}
+
 data class AppSettings(
     val themeMode: ThemeMode = ThemeMode.SYSTEM,
     val isOledMode: Boolean = false,
@@ -26,6 +28,9 @@ data class AppSettings(
     val isFlagHapticsEnabled: Boolean = true,
     val hapticStrength: HapticStrength = HapticStrength.MEDIUM,
     val seenTutorials: Set<GameDestination> = emptySet(),
+    val dailyWinsGames: Set<GameDestination> = GameDestination.entries.toSet(),
+    val solitaireHandedness: Handedness = Handedness.LEFT_HANDED,
+    val spiderHandedness: Handedness = Handedness.RIGHT_HANDED,
     val githubRepo: String = ""
 ) {
     fun resolveIsDark(systemDark: Boolean): Boolean = when (themeMode) {
@@ -61,6 +66,7 @@ object AppSettingsStore {
                 GameDestination.MINESWEEPER to DailyStreakManager(appContext, "minesweeper_daily_streak_prefs"),
                 GameDestination.SOLITAIRE to DailyStreakManager(appContext, "solitaire_daily_streak_prefs"),
                 GameDestination.FREECELL to DailyStreakManager(appContext, "freecell_daily_streak_prefs"),
+                GameDestination.SPIDER_SOLITAIRE to DailyStreakManager(appContext, "spider_daily_streak_prefs"),
                 GameDestination.SUDOKU to DailyStreakManager(appContext, "sudoku_daily_streak_prefs")
             )
             reloadFromPrefs()
@@ -87,10 +93,29 @@ object AppSettingsStore {
         val seen = GameDestination.entries.filter { dest ->
             prefs.getBoolean(tutorialPrefKey(dest), false)
         }.toSet()
+        val trackedDailyGames = GameDestination.entries.filter { dest ->
+            prefs.getBoolean(dailyWinsPrefKey(dest), true)
+        }.toSet().ifEmpty { GameDestination.entries.toSet() }
         val defaultRepo = normalizeGithubRepo(BuildConfig.DEFAULT_GITHUB_REPO).orEmpty()
         val storedRepo = prefs.getString("github_repo", null).orEmpty()
         val effectiveRepo = defaultRepo.ifEmpty { storedRepo }
         val storedOled = prefs.getBoolean("oled_mode", false)
+        val solitaireHandedness = try {
+            Handedness.valueOf(
+                prefs.getString("solitaire_handedness", Handedness.LEFT_HANDED.name)
+                    ?: Handedness.LEFT_HANDED.name
+            )
+        } catch (_: Exception) {
+            Handedness.LEFT_HANDED
+        }
+        val spiderHandedness = try {
+            Handedness.valueOf(
+                prefs.getString("spider_handedness", Handedness.RIGHT_HANDED.name)
+                    ?: Handedness.RIGHT_HANDED.name
+            )
+        } catch (_: Exception) {
+            Handedness.RIGHT_HANDED
+        }
         _settings.value = AppSettings(
             themeMode = themeMode,
             isOledMode = if (themeMode == ThemeMode.LIGHT) false else storedOled,
@@ -99,6 +124,9 @@ object AppSettingsStore {
             isFlagHapticsEnabled = prefs.getBoolean("flag_haptics_enabled", true),
             hapticStrength = strength,
             seenTutorials = seen,
+            dailyWinsGames = trackedDailyGames,
+            solitaireHandedness = solitaireHandedness,
+            spiderHandedness = spiderHandedness,
             githubRepo = effectiveRepo
         )
         _dailyStreaks.value = streakManagers.mapValues { (_, manager) -> manager.getStreak() }
@@ -106,6 +134,9 @@ object AppSettingsStore {
 
     private fun tutorialPrefKey(game: GameDestination): String =
         "tutorial_seen_${game.name.lowercase()}"
+
+    private fun dailyWinsPrefKey(game: GameDestination): String =
+        "daily_wins_include_${game.name.lowercase()}"
 
     fun setGithubRepo(context: Context, repoInput: String): String {
         init(context)
@@ -173,6 +204,29 @@ object AppSettingsStore {
         _settings.update { it.copy(hapticStrength = strength) }
     }
 
+    fun setGameCountsForDailyWins(context: Context, game: GameDestination, enabled: Boolean) {
+        init(context)
+        val current = _settings.value.dailyWinsGames
+        if (!enabled && current.size <= 1 && game in current) {
+            return
+        }
+        val updated = if (enabled) current + game else current - game
+        prefs.edit().putBoolean(dailyWinsPrefKey(game), enabled).apply()
+        _settings.update { it.copy(dailyWinsGames = updated) }
+    }
+
+    fun setSolitaireHandedness(context: Context, handedness: Handedness) {
+        init(context)
+        prefs.edit().putString("solitaire_handedness", handedness.name).apply()
+        _settings.update { it.copy(solitaireHandedness = handedness) }
+    }
+
+    fun setSpiderHandedness(context: Context, handedness: Handedness) {
+        init(context)
+        prefs.edit().putString("spider_handedness", handedness.name).apply()
+        _settings.update { it.copy(spiderHandedness = handedness) }
+    }
+
     fun getDailyStreak(game: GameDestination): DailyStreak {
         return _dailyStreaks.value[game] ?: DailyStreak()
     }
@@ -195,12 +249,14 @@ object AppSettingsStore {
 
     fun consumeDailySweepCelebrationIfReady(
         context: Context,
-        totalGames: Int = GameDestination.entries.size
+        trackedGames: Set<GameDestination> = _settings.value.dailyWinsGames
     ): Boolean {
         init(context)
-        if (totalGames <= 0) return false
-        val completedToday = _dailyStreaks.value.values.count { it.isWinAwardedToday }
-        if (completedToday < totalGames) return false
+        val targetGames = trackedGames.ifEmpty { return false }
+        val completedToday = targetGames.count { game ->
+            _dailyStreaks.value[game]?.isWinAwardedToday == true
+        }
+        if (completedToday < targetGames.size) return false
         val today = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US).format(java.util.Date())
         val lastCelebrated = prefs.getString(KEY_DAILY_SWEEP_CELEBRATED_DATE, null)
         if (lastCelebrated == today) return false

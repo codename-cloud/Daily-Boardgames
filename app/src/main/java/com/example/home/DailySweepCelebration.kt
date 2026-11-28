@@ -83,6 +83,8 @@ private val CelebrationColors = listOf(
 @Composable
 fun DailySweepCelebrationOverlay(
     visible: Boolean,
+    completedCount: Int,
+    totalCount: Int,
     isOledMode: Boolean,
     isDark: Boolean,
     onFinished: () -> Unit,
@@ -312,7 +314,7 @@ fun DailySweepCelebrationOverlay(
                                 .padding(horizontal = 7.dp, vertical = 2.dp)
                         ) {
                             Text(
-                                text = "4 / 4",
+                                text = "$completedCount / $totalCount",
                                 fontFamily = JetBrainsMonoFontFamily,
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 12.sp,
@@ -322,7 +324,11 @@ fun DailySweepCelebrationOverlay(
                     }
 
                     Text(
-                        text = "All 4 daily boards conquered today!",
+                        text = if (totalCount == 1) {
+                            "Daily board conquered today!"
+                        } else {
+                            "All $totalCount daily boards conquered today!"
+                        },
                         fontSize = 13.sp,
                         color = subtitleColor
                     )

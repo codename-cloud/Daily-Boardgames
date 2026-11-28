@@ -1,10 +1,12 @@
 package com.example
 
-import com.example.minesweeper.haptic.HapticStrength
+import com.example.common.DailyStreak
+import com.example.common.GameStatus
+import com.example.common.HapticStrength
+import com.example.common.resolveDailyStreakDialogCopy
 import com.example.minesweeper.model.Cell
 import com.example.minesweeper.model.Difficulty
 import com.example.minesweeper.model.DifficultyType
-import com.example.minesweeper.model.GameStatus
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -135,48 +137,48 @@ class MinesweeperGameTest {
 
     @Test
     fun testDailyStreakDialogCopyBeforeAndAfterDailyWin() {
-        val noStreak = com.example.minesweeper.data.DailyStreak(
+        val noStreak = DailyStreak(
             currentStreak = 0,
             longestStreak = 3,
             isWinAwardedToday = false
         )
-        val noStreakCopy = com.example.minesweeper.ui.components.resolveDailyStreakDialogCopy(noStreak)
+        val noStreakCopy = resolveDailyStreakDialogCopy(noStreak)
         assertEquals("Start a Streak!", noStreakCopy.title)
         assertTrue(noStreakCopy.subtitle.contains("Win a board today"))
 
-        val pendingOneDay = com.example.minesweeper.data.DailyStreak(
+        val pendingOneDay = DailyStreak(
             currentStreak = 1,
             longestStreak = 3,
             isWinAwardedToday = false
         )
-        val pendingOneDayCopy = com.example.minesweeper.ui.components.resolveDailyStreakDialogCopy(pendingOneDay)
+        val pendingOneDayCopy = resolveDailyStreakDialogCopy(pendingOneDay)
         assertEquals("1-Day Streak!", pendingOneDayCopy.title)
         assertEquals("You've won a board 1 day in a row! Win a board today to keep the flame alive!", pendingOneDayCopy.subtitle)
 
-        val pendingMultiDay = com.example.minesweeper.data.DailyStreak(
+        val pendingMultiDay = DailyStreak(
             currentStreak = 5,
             longestStreak = 5,
             isWinAwardedToday = false
         )
-        val pendingMultiDayCopy = com.example.minesweeper.ui.components.resolveDailyStreakDialogCopy(pendingMultiDay)
+        val pendingMultiDayCopy = resolveDailyStreakDialogCopy(pendingMultiDay)
         assertEquals("5-Day Streak!", pendingMultiDayCopy.title)
         assertEquals("You've won a board 5 days in a row! Win a board today to keep the flame alive!", pendingMultiDayCopy.subtitle)
 
-        val completedFirstDay = com.example.minesweeper.data.DailyStreak(
+        val completedFirstDay = DailyStreak(
             currentStreak = 1,
             longestStreak = 1,
             isWinAwardedToday = true
         )
-        val completedFirstDayCopy = com.example.minesweeper.ui.components.resolveDailyStreakDialogCopy(completedFirstDay)
+        val completedFirstDayCopy = resolveDailyStreakDialogCopy(completedFirstDay)
         assertEquals("First Win of the Day!", completedFirstDayCopy.title)
         assertTrue(completedFirstDayCopy.subtitle.contains("completed your first board today"))
 
-        val completedMultiDay = com.example.minesweeper.data.DailyStreak(
+        val completedMultiDay = DailyStreak(
             currentStreak = 5,
             longestStreak = 5,
             isWinAwardedToday = true
         )
-        val completedMultiDayCopy = com.example.minesweeper.ui.components.resolveDailyStreakDialogCopy(completedMultiDay)
+        val completedMultiDayCopy = resolveDailyStreakDialogCopy(completedMultiDay)
         assertEquals("5-Day Streak!", completedMultiDayCopy.title)
         assertTrue(completedMultiDayCopy.subtitle.contains("Come back tomorrow to keep the flame alive"))
     }

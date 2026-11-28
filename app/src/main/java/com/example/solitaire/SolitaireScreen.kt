@@ -58,11 +58,12 @@ import com.example.common.AppSettingsStore
 import com.example.common.ArcadeGameHUD
 import com.example.common.ArcadePillButton
 import com.example.common.ArcadeVictoryDialog
+import com.example.common.DailyStreakDialog
 import com.example.common.GameTutorialDialog
+import com.example.common.Handedness
+import com.example.common.SettingsDialog
 import com.example.common.rememberArcadeThemeColors
 import com.example.home.GameDestination
-import com.example.minesweeper.ui.components.DailyStreakDialog
-import com.example.minesweeper.ui.components.HapticSettingsDialog
 import kotlin.math.roundToInt
 
 @Composable
@@ -194,6 +195,7 @@ fun SolitaireScreen(
                 game = game,
                 dealGeneration = uiState.dealGeneration,
                 selection = uiState.selection,
+                handedness = uiState.handedness,
                 isOledMode = uiState.isOledMode,
                 isLandscape = isLandscape,
                 onStockClick = viewModel::onStockClick,
@@ -230,14 +232,8 @@ fun SolitaireScreen(
     }
 
     if (uiState.showSettingsDialog) {
-        HapticSettingsDialog(
-            isHapticsEnabled = uiState.isHapticsEnabled,
+        SettingsDialog(
             isOledMode = uiState.isOledMode,
-            isSoundEnabled = uiState.isSoundEnabled,
-            onToggleSound = { viewModel.setSoundEnabled(it) },
-            onToggleMasterHaptics = { viewModel.setHapticsEnabled(it) },
-            onToggleOledMode = { viewModel.setOledMode(it) },
-            showFlagHapticsSection = false,
             onOpenTutorial = {
                 viewModel.showSettingsDialog(false)
                 showTutorialDialog = true
@@ -246,34 +242,72 @@ fun SolitaireScreen(
             gameOptionsContent = {
                 Column(
                     modifier = Modifier.fillMaxWidth(),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    Text(
-                        text = "Draw Mode",
-                        fontWeight = FontWeight.SemiBold,
-                        fontSize = 15.sp,
-                        color = colors.primaryText
-                    )
-                    Row(
+                    Column(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        ArcadePillButton(
-                            label = "Draw 1",
-                            selected = game.drawMode == SolitaireDrawMode.DRAW_1,
-                            isOledMode = uiState.isOledMode,
-                            onClick = { viewModel.setDrawMode(SolitaireDrawMode.DRAW_1) },
-                            modifier = Modifier.weight(1f),
-                            testTag = "solitaire_draw1_pill"
+                        Text(
+                            text = "Draw Mode",
+                            fontWeight = FontWeight.SemiBold,
+                            fontSize = 15.sp,
+                            color = colors.primaryText
                         )
-                        ArcadePillButton(
-                            label = "Draw 3",
-                            selected = game.drawMode == SolitaireDrawMode.DRAW_3,
-                            isOledMode = uiState.isOledMode,
-                            onClick = { viewModel.setDrawMode(SolitaireDrawMode.DRAW_3) },
-                            modifier = Modifier.weight(1f),
-                            testTag = "solitaire_draw3_pill"
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            ArcadePillButton(
+                                label = "Draw 1",
+                                selected = game.drawMode == SolitaireDrawMode.DRAW_1,
+                                isOledMode = uiState.isOledMode,
+                                onClick = { viewModel.setDrawMode(SolitaireDrawMode.DRAW_1) },
+                                modifier = Modifier.weight(1f),
+                                testTag = "solitaire_draw1_pill"
+                            )
+                            ArcadePillButton(
+                                label = "Draw 3",
+                                selected = game.drawMode == SolitaireDrawMode.DRAW_3,
+                                isOledMode = uiState.isOledMode,
+                                onClick = { viewModel.setDrawMode(SolitaireDrawMode.DRAW_3) },
+                                modifier = Modifier.weight(1f),
+                                testTag = "solitaire_draw3_pill"
+                            )
+                        }
+                    }
+
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Text(
+                            text = "Layout Handedness",
+                            fontWeight = FontWeight.SemiBold,
+                            fontSize = 15.sp,
+                            color = colors.primaryText
                         )
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            ArcadePillButton(
+                                label = Handedness.LEFT_HANDED.label,
+                                selected = uiState.handedness == Handedness.LEFT_HANDED,
+                                isOledMode = uiState.isOledMode,
+                                onClick = { viewModel.setHandedness(Handedness.LEFT_HANDED) },
+                                modifier = Modifier.weight(1f),
+                                testTag = "solitaire_left_handed_pill"
+                            )
+                            ArcadePillButton(
+                                label = Handedness.RIGHT_HANDED.label,
+                                selected = uiState.handedness == Handedness.RIGHT_HANDED,
+                                isOledMode = uiState.isOledMode,
+                                onClick = { viewModel.setHandedness(Handedness.RIGHT_HANDED) },
+                                modifier = Modifier.weight(1f),
+                                testTag = "solitaire_right_handed_pill"
+                            )
+                        }
                     }
                 }
             }
@@ -324,6 +358,7 @@ private fun SolitairePlayfield(
     game: SolitaireGameState,
     dealGeneration: Int,
     selection: SolitaireSelection?,
+    handedness: Handedness,
     isOledMode: Boolean,
     isLandscape: Boolean,
     onStockClick: () -> Unit,
@@ -370,10 +405,21 @@ private fun SolitairePlayfield(
             }
         }
 
-        val stockOffsetPx = Offset.Zero
-        val wasteBaseOffsetPx = with(density) { Offset((cardWidth + 8.dp).toPx(), 0f) }
+        val isLeftHanded = handedness == Handedness.LEFT_HANDED
+        val stockX = if (isLeftHanded) 0.dp else (boardMaxWidth - cardWidth).coerceAtLeast(0.dp)
+        val wasteBaseX = if (isLeftHanded) {
+            cardWidth + 8.dp
+        } else {
+            (stockX - 8.dp - cardWidth).coerceAtLeast(0.dp)
+        }
+        val stockOffsetPx = with(density) { Offset(stockX.toPx(), 0f) }
+        val wasteBaseOffsetPx = with(density) { Offset(wasteBaseX.toPx(), 0f) }
         val wasteStepPx = with(density) { 12.dp.toPx() }
-        val foundationsStartX = (boardMaxWidth - (cardWidth * 4 + gap * 3)).coerceAtLeast(0.dp)
+        val foundationsStartX = if (isLeftHanded) {
+            (boardMaxWidth - (cardWidth * 4 + gap * 3)).coerceAtLeast(0.dp)
+        } else {
+            0.dp
+        }
         val tableauTopY = cardHeight + rowSpacing
         val tableauAvailableHeight = (boardMaxHeight - cardHeight - rowSpacing).coerceAtLeast(48.dp)
         val tableauColGap = ((boardMaxWidth - cardWidth * 7) / 6f).coerceAtLeast(0.dp)
@@ -390,47 +436,87 @@ private fun SolitairePlayfield(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.Top
                 ) {
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalAlignment = Alignment.Top
-                    ) {
-                        EmptyCardSlot(
-                            label = "↻",
-                            isOledMode = isOledMode,
-                            onClick = onStockClick,
-                            modifier = Modifier
-                                .width(cardWidth)
-                                .testTag("solitaire_stock_pile")
-                        )
-
-                        Box(
-                            modifier = Modifier
-                                .width(cardWidth * 1.45f)
-                                .height(cardHeight)
-                                .testTag("solitaire_waste_pile")
+                    val stockWasteSection: @Composable () -> Unit = {
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalAlignment = Alignment.Top
                         ) {
-                            EmptyCardSlot(
-                                label = "",
-                                isOledMode = isOledMode,
-                                modifier = Modifier.width(cardWidth)
-                            )
+                            if (isLeftHanded) {
+                                EmptyCardSlot(
+                                    label = "↻",
+                                    isOledMode = isOledMode,
+                                    onClick = onStockClick,
+                                    modifier = Modifier
+                                        .width(cardWidth)
+                                        .testTag("solitaire_stock_pile")
+                                )
+
+                                Box(
+                                    modifier = Modifier
+                                        .width(cardWidth * 1.45f)
+                                        .height(cardHeight)
+                                        .testTag("solitaire_waste_pile")
+                                ) {
+                                    EmptyCardSlot(
+                                        label = "",
+                                        isOledMode = isOledMode,
+                                        modifier = Modifier
+                                            .width(cardWidth)
+                                            .align(Alignment.TopStart)
+                                    )
+                                }
+                            } else {
+                                Box(
+                                    modifier = Modifier
+                                        .width(cardWidth * 1.45f)
+                                        .height(cardHeight)
+                                        .testTag("solitaire_waste_pile")
+                                ) {
+                                    EmptyCardSlot(
+                                        label = "",
+                                        isOledMode = isOledMode,
+                                        modifier = Modifier
+                                            .width(cardWidth)
+                                            .align(Alignment.TopEnd)
+                                    )
+                                }
+
+                                EmptyCardSlot(
+                                    label = "↻",
+                                    isOledMode = isOledMode,
+                                    onClick = onStockClick,
+                                    modifier = Modifier
+                                        .width(cardWidth)
+                                        .testTag("solitaire_stock_pile")
+                                )
+                            }
                         }
                     }
 
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(gap),
-                        verticalAlignment = Alignment.Top
-                    ) {
-                        for (f in 0..3) {
-                            EmptyCardSlot(
-                                label = "A",
-                                isOledMode = isOledMode,
-                                onClick = remember(f, onFoundationClick) { { onFoundationClick(f) } },
-                                modifier = Modifier
-                                    .width(cardWidth)
-                                    .testTag("solitaire_foundation_$f")
-                            )
+                    val foundationsSection: @Composable () -> Unit = {
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(gap),
+                            verticalAlignment = Alignment.Top
+                        ) {
+                            for (f in 0..3) {
+                                EmptyCardSlot(
+                                    label = "A",
+                                    isOledMode = isOledMode,
+                                    onClick = remember(f, onFoundationClick) { { onFoundationClick(f) } },
+                                    modifier = Modifier
+                                        .width(cardWidth)
+                                        .testTag("solitaire_foundation_$f")
+                                )
+                            }
                         }
+                    }
+
+                    if (isLeftHanded) {
+                        stockWasteSection()
+                        foundationsSection()
+                    } else {
+                        foundationsSection()
+                        stockWasteSection()
                     }
                 }
 
@@ -488,7 +574,11 @@ private fun SolitairePlayfield(
                 }
                 visibleWaste.forEachIndexed { idx, card ->
                     val isTop = idx == visibleWaste.lastIndex
-                    val fanX = if (game.drawMode == SolitaireDrawMode.DRAW_3) idx * wasteStepPx else 0f
+                    val fanX = if (game.drawMode == SolitaireDrawMode.DRAW_3) {
+                        if (isLeftHanded) idx * wasteStepPx else -idx * wasteStepPx
+                    } else {
+                        0f
+                    }
                     val justDrawn = drawnFromStock && card.id in prevStockIds
                     add(
                         SolitaireCardEntry(

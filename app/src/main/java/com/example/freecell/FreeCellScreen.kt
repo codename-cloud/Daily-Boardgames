@@ -57,11 +57,11 @@ import com.example.common.AppSettingsStore
 import com.example.common.ArcadeGameHUD
 import com.example.common.ArcadePillButton
 import com.example.common.ArcadeVictoryDialog
+import com.example.common.DailyStreakDialog
 import com.example.common.GameTutorialDialog
+import com.example.common.SettingsDialog
 import com.example.common.rememberArcadeThemeColors
 import com.example.home.GameDestination
-import com.example.minesweeper.ui.components.DailyStreakDialog
-import com.example.minesweeper.ui.components.HapticSettingsDialog
 import kotlin.math.roundToInt
 
 @Composable
@@ -208,14 +208,8 @@ fun FreeCellScreen(
     }
 
     if (uiState.showSettingsDialog) {
-        HapticSettingsDialog(
-            isHapticsEnabled = uiState.isHapticsEnabled,
+        SettingsDialog(
             isOledMode = uiState.isOledMode,
-            isSoundEnabled = uiState.isSoundEnabled,
-            onToggleSound = { viewModel.setSoundEnabled(it) },
-            onToggleMasterHaptics = { viewModel.setHapticsEnabled(it) },
-            onToggleOledMode = { viewModel.setOledMode(it) },
-            showFlagHapticsSection = false,
             onOpenTutorial = {
                 viewModel.showSettingsDialog(false)
                 showTutorialDialog = true

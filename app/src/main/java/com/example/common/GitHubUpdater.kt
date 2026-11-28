@@ -393,7 +393,7 @@ internal object GitHubApiParser {
 
         val runNumber = parseBuildRunNumber(tag) ?: dto.name?.let(::parseBuildRunNumber)
         val derivedVersionCode = if (tag.startsWith("build-", ignoreCase = true) && runNumber != null) {
-            (11L + runNumber).toInt()
+            (1L + runNumber).toInt()
         } else {
             null
         }
@@ -402,7 +402,7 @@ internal object GitHubApiParser {
         val bodyText = dto.body?.trim().orEmpty()
         val changelogEntries = formatStructuredChangelog(bodyText, isCommitMessage = false)
         val tagOrVersion = if (tag.startsWith("build-", ignoreCase = true) && runNumber != null) {
-            "v11.$runNumber"
+            "v1.$runNumber"
         } else {
             tag
         }
@@ -473,7 +473,7 @@ internal object GitHubApiParser {
                     title = title,
                     tagOrVersion = tagOrVersion,
                     runNumber = run.runNumber,
-                    versionCode = if (run.runNumber > 0L) (11L + run.runNumber).toInt() else null,
+                    versionCode = if (run.runNumber > 0L) (1L + run.runNumber).toInt() else null,
                     commitSha = run.headSha,
                     notes = commitMessage.ifBlank { "Built by GitHub Actions workflow run #${run.runNumber}." },
                     changelogItems = changelogEntries.map { it.text },

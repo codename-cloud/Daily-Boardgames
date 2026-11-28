@@ -1,4 +1,4 @@
-package com.example.minesweeper.audio
+package com.example.common
 
 import android.media.AudioManager
 import android.media.ToneGenerator

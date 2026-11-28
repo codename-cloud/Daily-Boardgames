@@ -44,7 +44,7 @@ class GitHubUpdaterTest {
         val json = """
             {
               "tag_name": "build-5",
-              "name": "Daily Boardgames v11.5 (Build #5)",
+              "name": "Daily Boardgames v1.5 (Build #5)",
               "body": "Automated APK build from workflow run #5 (commit abc1234).",
               "html_url": "https://github.com/kody/daily-boardgames/releases/tag/build-5",
               "published_at": "2026-11-25T12:00:00Z",
@@ -64,8 +64,8 @@ class GitHubUpdaterTest {
         requireNotNull(info)
         assertEquals(GitHubBuildInfo.Source.RELEASE, info.source)
         assertEquals(5L, info.runNumber)
-        assertEquals(16, info.versionCode)
-        assertEquals("v11.5", info.tagOrVersion)
+        assertEquals(6, info.versionCode)
+        assertEquals("v1.5", info.tagOrVersion)
         assertEquals("abc1234", info.commitSha)
         assertEquals(
             "https://github.com/kody/daily-boardgames/releases/download/build-5/daily-boardgames.apk",
@@ -76,8 +76,8 @@ class GitHubUpdaterTest {
         assertTrue(
             isRemoteBuildNewer(
                 remote = info,
-                localVersionCode = 15,
-                localVersionName = "11.4",
+                localVersionCode = 5,
+                localVersionName = "1.4",
                 localRunNumber = 4L,
                 localCommitSha = "0001111"
             )
@@ -87,19 +87,19 @@ class GitHubUpdaterTest {
         assertFalse(
             isRemoteBuildNewer(
                 remote = info,
-                localVersionCode = 16,
-                localVersionName = "11.5",
+                localVersionCode = 6,
+                localVersionName = "1.5",
                 localRunNumber = 5L,
                 localCommitSha = "abc1234deadbeef"
             )
         )
 
-        // Newer than base local build (versionCode 11, runNumber 0)
+        // Newer than base local build (versionCode 1, runNumber 0)
         assertTrue(
             isRemoteBuildNewer(
                 remote = info,
-                localVersionCode = 11,
-                localVersionName = "11.0",
+                localVersionCode = 1,
+                localVersionName = "1.0",
                 localRunNumber = 0L,
                 localCommitSha = ""
             )
@@ -134,7 +134,7 @@ class GitHubUpdaterTest {
         requireNotNull(info)
         assertEquals(GitHubBuildInfo.Source.WORKFLOW_RUN, info.source)
         assertEquals(8L, info.runNumber)
-        assertEquals(19, info.versionCode)
+        assertEquals(9, info.versionCode)
         assertEquals("https://github.com/kody/daily-boardgames/actions/runs/999111", info.browserUrl)
         assertNull(info.apkDownloadUrl)
         assertEquals(
@@ -222,7 +222,7 @@ class GitHubUpdaterTest {
             [
               {
                 "tag_name": "build-22",
-                "name": "Daily Boardgames v11.22 (Build #22)",
+                "name": "Daily Boardgames v1.22 (Build #22)",
                 "body": "### What's New in Build #22\n- Indent changelog explanation bullets\n  - Update workflow and app UI",
                 "html_url": "https://github.com/kody/daily-boardgames/releases/tag/build-22",
                 "published_at": "2026-11-27T10:00:00Z",
@@ -237,7 +237,7 @@ class GitHubUpdaterTest {
               },
               {
                 "tag_name": "build-21",
-                "name": "Daily Boardgames v11.21 (Build #21)",
+                "name": "Daily Boardgames v1.21 (Build #21)",
                 "body": "### What's New in Build #21\n- Optimize audio and haptic performance",
                 "html_url": "https://github.com/kody/daily-boardgames/releases/tag/build-21",
                 "published_at": "2026-11-27T09:00:00Z",
@@ -247,7 +247,7 @@ class GitHubUpdaterTest {
               },
               {
                 "tag_name": "build-20",
-                "name": "Daily Boardgames v11.20 (Build #20)",
+                "name": "Daily Boardgames v1.20 (Build #20)",
                 "body": "### What's New in Build #20\n- Fix DailyStreakDialog landscape clipping",
                 "html_url": "https://github.com/kody/daily-boardgames/releases/tag/build-20",
                 "published_at": "2026-11-27T08:00:00Z",
@@ -261,28 +261,28 @@ class GitHubUpdaterTest {
         val builds = GitHubApiParser.parseReleases("kody/daily-boardgames", json)
         val pending = buildPendingUpdateInfo(
             builds = builds,
-            localVersionCode = 31,
-            localVersionName = "11.20",
+            localVersionCode = 21,
+            localVersionName = "1.20",
             localRunNumber = 20L,
             localCommitSha = ""
         )
 
         assertNotNull(pending)
         requireNotNull(pending)
-        assertEquals("v11.22", pending.tagOrVersion)
+        assertEquals("v1.22", pending.tagOrVersion)
         assertEquals(
             listOf(
                 VersionChangelog(
-                    versionLabel = "v11.22",
-                    title = "Daily Boardgames v11.22 (Build #22)",
+                    versionLabel = "v1.22",
+                    title = "Daily Boardgames v1.22 (Build #22)",
                     entries = listOf(
                         ChangelogEntry("Indent changelog explanation bullets", indentLevel = 0),
                         ChangelogEntry("Update workflow and app UI", indentLevel = 1)
                     )
                 ),
                 VersionChangelog(
-                    versionLabel = "v11.21",
-                    title = "Daily Boardgames v11.21 (Build #21)",
+                    versionLabel = "v1.21",
+                    title = "Daily Boardgames v1.21 (Build #21)",
                     entries = listOf(
                         ChangelogEntry("Optimize audio and haptic performance", indentLevel = 0)
                     )

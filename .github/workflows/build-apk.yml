@@ -88,8 +88,8 @@ jobs:
         run: |
           ./gradlew assembleDebug \
             -Pandroid.injected.testOnly=false \
-            -PbuildVersionCode=$((11 + ${{ github.run_number }})) \
-            -PbuildVersionName="11.${{ github.run_number }}" \
+            -PbuildVersionCode=$((1 + ${{ github.run_number }})) \
+            -PbuildVersionName="1.${{ github.run_number }}" \
             -PbuildRunNumber="${{ github.run_number }}" \
             -PbuildCommitSha="${{ github.sha }}" \
             -PbuildGithubRepo="${{ github.repository }}" \
@@ -116,7 +116,7 @@ jobs:
           HEAD_COMMIT_MSG: ${{ github.event.head_commit.message }}
         run: |
           TAG="build-${RUN_NUMBER}"
-          TITLE="Daily Boardgames v11.${RUN_NUMBER} (Build #${RUN_NUMBER})"
+          TITLE="Daily Boardgames v1.${RUN_NUMBER} (Build #${RUN_NUMBER})"
 
           PREV_TAG=$(gh release list --limit 1 --json tagName --jq '.[0].tagName // ""' 2>/dev/null || echo "")
           export PREV_TAG

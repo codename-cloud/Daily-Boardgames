@@ -5,6 +5,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -68,6 +69,10 @@ enum class TutorialVisualType {
     FC_SUPERMOVE,
     FC_SPACE,
     FC_CONTROLS,
+    SPIDER_RUNS,
+    SPIDER_STACK,
+    SPIDER_STOCK,
+    SPIDER_MODES,
     SUDOKU_GRID,
     SUDOKU_PEERS,
     SUDOKU_NOTES,
@@ -144,6 +149,29 @@ internal fun tutorialStepsFor(game: GameDestination): List<TutorialStep> = when 
         )
     )
 
+    GameDestination.SPIDER_SOLITAIRE -> listOf(
+        TutorialStep(
+            title = "Complete 8 Full Suit Runs",
+            description = "Build 8 complete descending sequences from King (K) down to Ace (A) in the same suit. Completed runs clear automatically to the top!",
+            visualType = TutorialVisualType.SPIDER_RUNS
+        ),
+        TutorialStep(
+            title = "Mix Suits, Move Same-Suit",
+            description = "You can place any card on a rank 1 higher of any suit (e.g., 7♥ on 8♠), or move any card into an empty column—but only same-suit sequences slide together.",
+            visualType = TutorialVisualType.SPIDER_STACK
+        ),
+        TutorialStep(
+            title = "Deal 10 Cards from Stock",
+            description = "Tap the top-right Stock pile to deal 1 face-up card onto all 10 columns. Make sure no column is empty before dealing!",
+            visualType = TutorialVisualType.SPIDER_STOCK
+        ),
+        TutorialStep(
+            title = "Choose 1, 2, or 4 Suits",
+            description = "Start relaxed with 1 Suit (all Spades), or challenge yourself with 2 Suits or 4 Suits anytime in Game Settings.",
+            visualType = TutorialVisualType.SPIDER_MODES
+        )
+    )
+
     GameDestination.SUDOKU -> listOf(
         TutorialStep(
             title = "Complete the 9×9 Grid",
@@ -172,6 +200,7 @@ internal fun gameTitleFor(game: GameDestination): String = when (game) {
     GameDestination.MINESWEEPER -> "Minesweeper"
     GameDestination.SOLITAIRE -> "Solitaire"
     GameDestination.FREECELL -> "FreeCell"
+    GameDestination.SPIDER_SOLITAIRE -> "Spider Solitaire"
     GameDestination.SUDOKU -> "Sudoku"
 }
 
@@ -179,6 +208,7 @@ internal fun gameAccentFor(game: GameDestination): Color = when (game) {
     GameDestination.MINESWEEPER -> Color(0xFF2563EB)
     GameDestination.SOLITAIRE -> Color(0xFF16A34A)
     GameDestination.FREECELL -> Color(0xFF0D9488)
+    GameDestination.SPIDER_SOLITAIRE -> Color(0xFF7C3AED)
     GameDestination.SUDOKU -> Color(0xFFD97706)
 }
 
@@ -206,6 +236,9 @@ fun GameTutorialDialog(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Row(
+                    modifier = Modifier
+                        .weight(1f)
+                        .padding(end = 6.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
@@ -228,7 +261,8 @@ fun GameTutorialDialog(
                             text = "${gameTitleFor(game)} Tutorial",
                             fontFamily = OutfitFontFamily,
                             fontWeight = FontWeight.Bold,
-                            fontSize = 18.sp,
+                            fontSize = 17.sp,
+                            lineHeight = 21.sp,
                             color = colors.primaryText
                         )
                         Text(
@@ -243,13 +277,16 @@ fun GameTutorialDialog(
                 if (!isLastStep) {
                     TextButton(
                         onClick = onDismiss,
+                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
                         modifier = Modifier.testTag("tutorial_skip_button")
                     ) {
                         Text(
                             text = "Skip",
                             color = colors.secondaryText,
                             fontWeight = FontWeight.SemiBold,
-                            fontSize = 13.sp
+                            fontSize = 13.sp,
+                            maxLines = 1,
+                            softWrap = false
                         )
                     }
                 }
@@ -599,6 +636,67 @@ private fun TutorialIllustration(
             EmptyCardSlot(label = "FC", isOledMode = isOledMode, isHighlighted = true, modifier = Modifier.width(42.dp))
             EmptyCardSlot(label = "FC", isOledMode = isOledMode, modifier = Modifier.width(42.dp))
             EmptyCardSlot(label = "FC", isOledMode = isOledMode, modifier = Modifier.width(42.dp))
+        }
+
+        TutorialVisualType.SPIDER_RUNS -> Row(
+            horizontalArrangement = Arrangement.spacedBy(5.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            PlayingCardView(card = PlayingCard(Suit.SPADES, Rank.KING), modifier = Modifier.width(34.dp))
+            PlayingCardView(card = PlayingCard(Suit.SPADES, Rank.QUEEN), modifier = Modifier.width(34.dp))
+            PlayingCardView(card = PlayingCard(Suit.SPADES, Rank.JACK), modifier = Modifier.width(34.dp))
+            Text("…", color = accent, fontWeight = FontWeight.Bold, fontSize = 18.sp)
+            PlayingCardView(card = PlayingCard(Suit.SPADES, Rank.ACE), modifier = Modifier.width(34.dp))
+        }
+
+        TutorialVisualType.SPIDER_STACK -> Row(
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(modifier = Modifier.height(78.dp)) {
+                PlayingCardView(
+                    card = PlayingCard(Suit.HEARTS, Rank.SEVEN),
+                    isSelected = true,
+                    modifier = Modifier.width(42.dp)
+                )
+                PlayingCardView(
+                    card = PlayingCard(Suit.HEARTS, Rank.SIX),
+                    isSelected = true,
+                    modifier = Modifier
+                        .padding(top = 18.dp)
+                        .width(42.dp)
+                )
+            }
+            Text("→", color = accent, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+            PlayingCardView(
+                card = PlayingCard(Suit.SPADES, Rank.EIGHT),
+                modifier = Modifier.width(42.dp)
+            )
+        }
+
+        TutorialVisualType.SPIDER_STOCK -> Row(
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            PlayingCardView(
+                card = PlayingCard(Suit.SPADES, Rank.ACE, isFaceUp = false),
+                modifier = Modifier.width(42.dp)
+            )
+            Text("→", color = accent, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                PlayingCardView(card = PlayingCard(Suit.SPADES, Rank.NINE), modifier = Modifier.width(34.dp))
+                PlayingCardView(card = PlayingCard(Suit.SPADES, Rank.FOUR), modifier = Modifier.width(34.dp))
+                PlayingCardView(card = PlayingCard(Suit.HEARTS, Rank.JACK), modifier = Modifier.width(34.dp))
+            }
+        }
+
+        TutorialVisualType.SPIDER_MODES -> Row(
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            ArcadePillButton(label = "1 Suit", selected = true, isOledMode = isOledMode, accentColor = accent, onClick = {})
+            ArcadePillButton(label = "2 Suits", selected = false, isOledMode = isOledMode, onClick = {})
+            ArcadePillButton(label = "4 Suits", selected = false, isOledMode = isOledMode, onClick = {})
         }
 
         TutorialVisualType.SUDOKU_GRID -> MiniSudokuBox(

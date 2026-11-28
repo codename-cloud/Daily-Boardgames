@@ -1,4 +1,4 @@
-package com.example.minesweeper.ui.components
+package com.example.common
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -41,30 +41,33 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.BuildConfig
-import com.example.common.AppSettingsStore
-import com.example.common.GitHubUpdateDialog
-import com.example.common.GitHubUpdateManager
-import com.example.minesweeper.haptic.HapticStrength
+import com.example.home.GameDestination
 import com.example.ui.theme.LocalIsDarkTheme
 
 @Composable
-fun HapticSettingsDialog(
-    isHapticsEnabled: Boolean,
+fun SettingsDialog(
+    title: String = "Game Settings",
+    isHapticsEnabled: Boolean = true,
     isFlagHapticsEnabled: Boolean = true,
     hapticStrength: HapticStrength = HapticStrength.MEDIUM,
     isOledMode: Boolean,
-    onToggleMasterHaptics: (Boolean) -> Unit,
+    onToggleMasterHaptics: (Boolean) -> Unit = {},
     onToggleFlagHaptics: (Boolean) -> Unit = {},
     onSelectHapticStrength: (HapticStrength) -> Unit = {},
     onTestFlagHaptic: () -> Unit = {},
-    onToggleOledMode: (Boolean) -> Unit,
+    onToggleOledMode: (Boolean) -> Unit = {},
     onDismiss: () -> Unit,
     isSoundEnabled: Boolean? = null,
     onToggleSound: ((Boolean) -> Unit)? = null,
-    showFlagHapticsSection: Boolean = true,
+    showThemeSection: Boolean = false,
+    showSoundAndHapticsSection: Boolean = false,
+    showFlagHapticsSection: Boolean = false,
     onOpenTutorial: (() -> Unit)? = null,
-    showAppUpdatesOption: Boolean = true,
+    showAppUpdatesOption: Boolean = false,
     onOpenAppUpdates: (() -> Unit)? = null,
+    showDailyWinsSelector: Boolean = false,
+    dailyWinsGames: Set<GameDestination> = GameDestination.entries.toSet(),
+    onToggleDailyWinsGame: ((GameDestination, Boolean) -> Unit)? = null,
     gameOptionsContent: (@Composable () -> Unit)? = null
 ) {
     val context = LocalContext.current
@@ -90,7 +93,7 @@ fun HapticSettingsDialog(
                     tint = MaterialTheme.colorScheme.primary
                 )
                 Text(
-                    text = "Game Settings",
+                    text = title,
                     fontWeight = FontWeight.Bold,
                     fontSize = 20.sp,
                     color = titleColor
@@ -104,86 +107,20 @@ fun HapticSettingsDialog(
                     .verticalScroll(rememberScrollState())
                     .testTag("haptic_settings_dialog")
             ) {
+                var hasPreviousSection = false
+
                 if (gameOptionsContent != null) {
                     gameOptionsContent()
-                    HorizontalDivider(modifier = Modifier.padding(vertical = 10.dp))
+                    hasPreviousSection = true
                 }
 
-                // Theme Section: Dark Mode + OLED Pure Black Mode
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 4.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Column(modifier = Modifier.weight(1f).padding(end = 8.dp)) {
-                        Text(
-                            text = "Dark Mode",
-                            fontWeight = FontWeight.SemiBold,
-                            fontSize = 15.sp,
-                            color = titleColor
-                        )
-                        Text(
-                            text = if (isDarkMode) "Dark slate theme active" else "Light theme active",
-                            fontSize = 12.sp,
-                            color = subTextColor
-                        )
+                if (showThemeSection) {
+                    if (hasPreviousSection) {
+                        HorizontalDivider(modifier = Modifier.padding(vertical = 10.dp))
                     }
-                    Switch(
-                        checked = isDarkMode,
-                        onCheckedChange = { enabled ->
-                            AppSettingsStore.setDarkMode(context, enabled)
-                            if (!enabled && isOledMode) {
-                                onToggleOledMode(false)
-                            }
-                        },
-                        modifier = Modifier.testTag("dark_mode_switch")
-                    )
-                }
+                    hasPreviousSection = true
 
-                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
-
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 4.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Column(modifier = Modifier.weight(1f).padding(end = 8.dp)) {
-                        Text(
-                            text = "OLED Pure Black Mode",
-                            fontWeight = FontWeight.SemiBold,
-                            fontSize = 15.sp,
-                            color = if (isDarkMode) titleColor else titleColor.copy(alpha = 0.4f)
-                        )
-                        Text(
-                            text = if (isDarkMode) {
-                                "Pure #000000 theme for OLED screens"
-                            } else {
-                                "Enable Dark Mode to use OLED Pure Black"
-                            },
-                            fontSize = 12.sp,
-                            color = if (isDarkMode) subTextColor else subTextColor.copy(alpha = 0.35f)
-                        )
-                    }
-                    Switch(
-                        checked = effectiveOledMode,
-                        onCheckedChange = { enabled ->
-                            if (isDarkMode) {
-                                onToggleOledMode(enabled)
-                            }
-                        },
-                        enabled = isDarkMode,
-                        modifier = Modifier.testTag("oled_mode_switch")
-                    )
-                }
-
-                if (isSoundEnabled != null && onToggleSound != null) {
-                    HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
-
-                    // Sound Selector
+                    // Theme Section: Dark Mode + OLED Pure Black Mode
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -193,57 +130,143 @@ fun HapticSettingsDialog(
                     ) {
                         Column(modifier = Modifier.weight(1f).padding(end = 8.dp)) {
                             Text(
-                                text = "Sound Effects",
+                                text = "Dark Mode",
                                 fontWeight = FontWeight.SemiBold,
                                 fontSize = 15.sp,
                                 color = titleColor
                             )
                             Text(
-                                text = "Play audio cues for moves and wins",
+                                text = if (isDarkMode) "Dark slate theme active" else "Light theme active",
                                 fontSize = 12.sp,
                                 color = subTextColor
                             )
                         }
                         Switch(
-                            checked = isSoundEnabled,
-                            onCheckedChange = onToggleSound,
-                            modifier = Modifier.testTag("sound_enabled_switch")
+                            checked = isDarkMode,
+                            onCheckedChange = { enabled ->
+                                AppSettingsStore.setDarkMode(context, enabled)
+                                if (!enabled && isOledMode) {
+                                    onToggleOledMode(false)
+                                }
+                            },
+                            modifier = Modifier.testTag("dark_mode_switch")
+                        )
+                    }
+
+                    HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 4.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f).padding(end = 8.dp)) {
+                            Text(
+                                text = "OLED Pure Black Mode",
+                                fontWeight = FontWeight.SemiBold,
+                                fontSize = 15.sp,
+                                color = if (isDarkMode) titleColor else titleColor.copy(alpha = 0.4f)
+                            )
+                            Text(
+                                text = if (isDarkMode) {
+                                    "Pure #000000 theme for OLED screens"
+                                } else {
+                                    "Enable Dark Mode to use OLED Pure Black"
+                                },
+                                fontSize = 12.sp,
+                                color = if (isDarkMode) subTextColor else subTextColor.copy(alpha = 0.35f)
+                            )
+                        }
+                        Switch(
+                            checked = effectiveOledMode,
+                            onCheckedChange = { enabled ->
+                                if (isDarkMode) {
+                                    onToggleOledMode(enabled)
+                                }
+                            },
+                            enabled = isDarkMode,
+                            modifier = Modifier.testTag("oled_mode_switch")
                         )
                     }
                 }
 
-                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+                if (showSoundAndHapticsSection) {
+                    if (isSoundEnabled != null && onToggleSound != null) {
+                        if (hasPreviousSection) {
+                            HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+                        }
+                        hasPreviousSection = true
 
-                // Master Haptics Switch
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 4.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Column(modifier = Modifier.weight(1f).padding(end = 8.dp)) {
-                        Text(
-                            text = "Vibrations & Haptics",
-                            fontWeight = FontWeight.SemiBold,
-                            fontSize = 15.sp,
-                            color = titleColor
-                        )
-                        Text(
-                            text = "Enable all tactile feedback",
-                            fontSize = 12.sp,
-                            color = subTextColor
+                        // Sound Selector
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 4.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column(modifier = Modifier.weight(1f).padding(end = 8.dp)) {
+                                Text(
+                                    text = "Sound Effects",
+                                    fontWeight = FontWeight.SemiBold,
+                                    fontSize = 15.sp,
+                                    color = titleColor
+                                )
+                                Text(
+                                    text = "Play audio cues for moves and wins",
+                                    fontSize = 12.sp,
+                                    color = subTextColor
+                                )
+                            }
+                            Switch(
+                                checked = isSoundEnabled,
+                                onCheckedChange = onToggleSound,
+                                modifier = Modifier.testTag("sound_enabled_switch")
+                            )
+                        }
+                    }
+
+                    if (hasPreviousSection) {
+                        HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+                    }
+                    hasPreviousSection = true
+
+                    // Master Haptics Switch
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 4.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f).padding(end = 8.dp)) {
+                            Text(
+                                text = "Vibrations & Haptics",
+                                fontWeight = FontWeight.SemiBold,
+                                fontSize = 15.sp,
+                                color = titleColor
+                            )
+                            Text(
+                                text = "Enable all tactile feedback",
+                                fontSize = 12.sp,
+                                color = subTextColor
+                            )
+                        }
+                        Switch(
+                            checked = isHapticsEnabled,
+                            onCheckedChange = onToggleMasterHaptics,
+                            modifier = Modifier.testTag("master_haptics_switch")
                         )
                     }
-                    Switch(
-                        checked = isHapticsEnabled,
-                        onCheckedChange = onToggleMasterHaptics,
-                        modifier = Modifier.testTag("master_haptics_switch")
-                    )
                 }
 
                 if (showFlagHapticsSection) {
-                    HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+                    if (hasPreviousSection) {
+                        HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+                    }
+                    hasPreviousSection = true
 
                     // Flag Placement Haptic Toggle
                     Row(
@@ -340,8 +363,87 @@ fun HapticSettingsDialog(
                     }
                 }
 
+                if (showDailyWinsSelector && onToggleDailyWinsGame != null) {
+                    if (hasPreviousSection) {
+                        HorizontalDivider(modifier = Modifier.padding(vertical = 10.dp))
+                    }
+                    hasPreviousSection = true
+
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .testTag("daily_wins_settings_section"),
+                        verticalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Text(
+                            text = "Daily Wins Tracker",
+                            fontWeight = FontWeight.SemiBold,
+                            fontSize = 15.sp,
+                            color = titleColor
+                        )
+                        Text(
+                            text = "Choose which games count toward Daily Wins & Daily Sweep",
+                            fontSize = 12.sp,
+                            color = subTextColor
+                        )
+
+                        Card(
+                            colors = CardDefaults.cardColors(
+                                containerColor = if (effectiveOledMode) Color(0xFF1E1E1E) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                            ),
+                            shape = RoundedCornerShape(8.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Column(modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)) {
+                                GameDestination.entries.forEachIndexed { index, game ->
+                                    val isIncluded = game in dailyWinsGames
+                                    val canToggleOff = !(isIncluded && dailyWinsGames.size <= 1)
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(vertical = 2.dp),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Text(
+                                            text = gameTitleFor(game),
+                                            fontSize = 14.sp,
+                                            fontWeight = FontWeight.Medium,
+                                            color = titleColor
+                                        )
+                                        Switch(
+                                            checked = isIncluded,
+                                            enabled = canToggleOff,
+                                            onCheckedChange = { checked ->
+                                                onToggleDailyWinsGame(game, checked)
+                                            },
+                                            modifier = Modifier.testTag("daily_wins_toggle_${game.name.lowercase()}")
+                                        )
+                                    }
+                                    if (index < GameDestination.entries.lastIndex) {
+                                        HorizontalDivider(
+                                            color = subTextColor.copy(alpha = 0.14f)
+                                        )
+                                    }
+                                }
+                            }
+                        }
+
+                        if (dailyWinsGames.size <= 1) {
+                            Text(
+                                text = "At least 1 game must remain active.",
+                                fontSize = 11.sp,
+                                color = subTextColor
+                            )
+                        }
+                    }
+                }
+
                 if (onOpenTutorial != null) {
-                    HorizontalDivider(modifier = Modifier.padding(vertical = 10.dp))
+                    if (hasPreviousSection) {
+                        HorizontalDivider(modifier = Modifier.padding(vertical = 10.dp))
+                    }
+                    hasPreviousSection = true
 
                     OutlinedButton(
                         onClick = onOpenTutorial,
@@ -363,7 +465,9 @@ fun HapticSettingsDialog(
                 }
 
                 if (showAppUpdatesOption) {
-                    HorizontalDivider(modifier = Modifier.padding(vertical = 10.dp))
+                    if (hasPreviousSection) {
+                        HorizontalDivider(modifier = Modifier.padding(vertical = 10.dp))
+                    }
 
                     val hasUpdate = updateState.availableUpdate != null
                     OutlinedButton(

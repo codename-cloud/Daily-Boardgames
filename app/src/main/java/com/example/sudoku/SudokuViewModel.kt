@@ -4,11 +4,11 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.common.AppSettingsStore
+import com.example.common.DailyStreak
+import com.example.common.GameStatus
+import com.example.common.HapticManager
+import com.example.common.SoundManager
 import com.example.home.GameDestination
-import com.example.minesweeper.audio.SoundManager
-import com.example.minesweeper.data.DailyStreak
-import com.example.minesweeper.haptic.HapticManager
-import com.example.minesweeper.model.GameStatus
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay

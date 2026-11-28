@@ -10,6 +10,10 @@ import com.example.solitaire.SolitaireDrawMode
 import com.example.solitaire.SolitaireEngine
 import com.example.solitaire.SolitaireGameState
 import com.example.solitaire.SolitaireSolver
+import com.example.spider.SpiderCard
+import com.example.spider.SpiderEngine
+import com.example.spider.SpiderGameState
+import com.example.spider.SpiderSuitMode
 import com.example.sudoku.SudokuDifficulty
 import com.example.sudoku.SudokuGenerator
 import org.junit.Assert.assertEquals
@@ -152,5 +156,85 @@ class BoardgamesEngineTest {
         }
         val elapsed = System.currentTimeMillis() - startMs
         println("Generated and verified 25 FreeCell deals in ${elapsed}ms")
+    }
+
+    @Test
+    fun testSpiderInitialDealAndSuitModes() {
+        val oneSuit = SpiderEngine.newDeal(SpiderSuitMode.ONE_SUIT, seed = 11L)
+        assertEquals(50, oneSuit.stock.size)
+        assertEquals(5, oneSuit.stockDealsRemaining)
+        assertEquals(10, oneSuit.tableau.size)
+        assertEquals(54, oneSuit.tableau.sumOf { it.size })
+        for (col in 0 until 10) {
+            val expectedCount = if (col < 4) 6 else 5
+            assertEquals(expectedCount, oneSuit.tableau[col].size)
+            assertTrue(oneSuit.tableau[col].last().isFaceUp)
+            assertTrue(oneSuit.tableau[col].dropLast(1).none { it.isFaceUp })
+        }
+        val allOneSuitCards = oneSuit.stock + oneSuit.tableau.flatten()
+        assertEquals(104, allOneSuitCards.map { it.uid }.toSet().size)
+        assertTrue(allOneSuitCards.all { it.suit == Suit.SPADES })
+
+        val twoSuits = SpiderEngine.createSpiderDeck(SpiderSuitMode.TWO_SUITS, seed = 11L)
+        assertEquals(setOf(Suit.SPADES, Suit.HEARTS), twoSuits.map { it.suit }.toSet())
+
+        val fourSuits = SpiderEngine.createSpiderDeck(SpiderSuitMode.FOUR_SUITS, seed = 11L)
+        assertEquals(Suit.entries.toSet(), fourSuits.map { it.suit }.toSet())
+    }
+
+    @Test
+    fun testSpiderRunRulesStockGuardAndSuitRunCompletion() {
+        var uid = 0
+        fun card(suit: Suit, rank: Rank, faceUp: Boolean = true) =
+            SpiderCard(uid = uid++, card = PlayingCard(suit = suit, rank = rank, isFaceUp = faceUp))
+
+        // Mixed-suit descending sequence cannot move together, only bottom card can move
+        val mixedCol = listOf(
+            card(Suit.SPADES, Rank.NINE),
+            card(Suit.HEARTS, Rank.EIGHT),
+            card(Suit.HEARTS, Rank.SEVEN)
+        )
+        assertFalse(SpiderEngine.isValidMovableRun(mixedCol, 0))
+        assertTrue(SpiderEngine.isValidMovableRun(mixedCol, 1))
+
+        val initialState = SpiderGameState(
+            tableau = listOf(
+                mixedCol,
+                listOf(card(Suit.SPADES, Rank.NINE)),
+                List(6) { card(Suit.SPADES, Rank.THREE) },
+                emptyList(), emptyList(), emptyList(), emptyList(), emptyList(), emptyList(), emptyList()
+            ),
+            stock = List(10) { card(Suit.SPADES, Rank.TWO, faceUp = false) }
+        )
+
+        // Stock deal blocked when an empty column exists and >= 10 cards are on tableau
+        assertTrue(SpiderEngine.isStockDealBlockedByEmptyColumn(initialState))
+        assertNull(SpiderEngine.dealFromStock(initialState))
+
+        // Same-suit sub-run (8H, 7H) can drop onto any suit 9 (9S)
+        val moved = SpiderEngine.moveTableauToTableau(initialState, sourceCol = 0, cardIndex = 1, targetCol = 1)
+        assertNotNull(moved)
+        assertEquals(1, moved!!.tableau[0].size)
+        assertEquals(3, moved.tableau[1].size)
+
+        // Completing a K..A same-suit run automatically clears it and reveals underlying card
+        val nearlyFullRun = Rank.entries.sortedByDescending { it.value }.dropLast(1).map { r ->
+            card(Suit.SPADES, r, faceUp = true)
+        }
+        val stateBeforeComplete = SpiderGameState(
+            tableau = listOf(
+                listOf(card(Suit.HEARTS, Rank.FOUR, faceUp = false)) + nearlyFullRun,
+                listOf(card(Suit.SPADES, Rank.ACE, faceUp = true)),
+                emptyList(), emptyList(), emptyList(), emptyList(), emptyList(), emptyList(), emptyList(), emptyList()
+            ),
+            completedSuits = List(7) { Suit.SPADES }
+        )
+        val completedState = SpiderEngine.moveTableauToTableau(stateBeforeComplete, sourceCol = 1, cardIndex = 0, targetCol = 0)
+        assertNotNull(completedState)
+        assertEquals(8, completedState!!.completedSuits.size)
+        assertTrue(completedState.isWon)
+        assertEquals(1, completedState.tableau[0].size)
+        assertTrue(completedState.tableau[0].first().isFaceUp)
+        assertEquals(Rank.FOUR, completedState.tableau[0].first().rank)
     }
 }

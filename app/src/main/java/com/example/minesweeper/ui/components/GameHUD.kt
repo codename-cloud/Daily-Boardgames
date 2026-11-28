@@ -33,10 +33,13 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.minesweeper.data.DailyStreak
+import com.example.common.DailyStreak
+import com.example.common.DailyStreakBadge
+import com.example.common.DigitalCounter
+import com.example.common.GameStatus
+import com.example.common.SmileyButton
 import com.example.minesweeper.model.Difficulty
 import com.example.minesweeper.model.DifficultyType
-import com.example.minesweeper.model.GameStatus
 import com.example.minesweeper.model.InteractionMode
 import com.example.ui.theme.LocalIsDarkTheme
 
@@ -297,55 +300,6 @@ fun GameHUD(
                     onToggle = onToggleInteractionMode
                 )
             }
-        }
-    }
-}
-
-@Composable
-fun DailyStreakBadge(
-    streak: DailyStreak,
-    isOledMode: Boolean,
-    isDark: Boolean,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    val count = streak.currentStreak
-    val isAwarded = streak.isWinAwardedToday
-
-    Box(
-        modifier = modifier
-            .testTag("daily_streak_badge")
-            .clip(RoundedCornerShape(14.dp))
-            .background(
-                when {
-                    isAwarded -> Color(0xFFE65100).copy(alpha = 0.25f)
-                    isOledMode -> Color(0xFF1E1E1E)
-                    isDark -> Color(0xFF334155)
-                    else -> Color(0xFFE2E8F0)
-                }
-            )
-            .clickable(
-                role = Role.Button,
-                onClickLabel = "View Daily Streak: $count days",
-                onClick = onClick
-            )
-            .padding(horizontal = 8.dp, vertical = 4.dp),
-        contentAlignment = Alignment.Center
-    ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(3.dp)
-        ) {
-            Text(
-                text = "🔥",
-                fontSize = 13.sp
-            )
-            Text(
-                text = "${count}d",
-                fontSize = 12.sp,
-                fontWeight = FontWeight.Bold,
-                color = if (isAwarded) Color(0xFFFF9800) else if (isDark || isOledMode) Color.White else Color(0xFF1E293B)
-            )
         }
     }
 }

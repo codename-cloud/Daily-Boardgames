@@ -38,15 +38,15 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.common.AppSettingsStore
 import com.example.common.ArcadePillButton
+import com.example.common.DailyStreakDialog
+import com.example.common.GameStatus
 import com.example.common.GameTutorialDialog
+import com.example.common.SettingsDialog
 import com.example.home.GameDestination
 import com.example.minesweeper.model.Difficulty
 import com.example.minesweeper.model.DifficultyType
-import com.example.minesweeper.model.GameStatus
-import com.example.minesweeper.ui.components.DailyStreakDialog
 import com.example.minesweeper.ui.components.GameHUD
 import com.example.minesweeper.ui.components.GameOverDialog
-import com.example.minesweeper.ui.components.HapticSettingsDialog
 import com.example.minesweeper.ui.components.MinesweeperBoard
 import com.example.minesweeper.ui.components.StatsDialog
 import com.example.minesweeper.viewmodel.MinesweeperViewModel
@@ -184,18 +184,15 @@ fun MinesweeperScreen(
 
     // Settings & Statistics Dialogs
     if (uiState.showHapticSettingsDialog) {
-        HapticSettingsDialog(
+        SettingsDialog(
             isHapticsEnabled = uiState.isHapticsEnabled,
             isFlagHapticsEnabled = uiState.isFlagHapticsEnabled,
             hapticStrength = uiState.hapticStrength,
             isOledMode = uiState.isOledMode,
-            isSoundEnabled = uiState.isSoundEnabled,
-            onToggleSound = { viewModel.setSoundEnabled(it) },
-            onToggleMasterHaptics = { viewModel.setHapticsEnabled(it) },
             onToggleFlagHaptics = { viewModel.setFlagHapticsEnabled(it) },
             onSelectHapticStrength = { viewModel.setHapticStrength(it) },
             onTestFlagHaptic = { viewModel.testFlagHaptic() },
-            onToggleOledMode = { viewModel.setOledMode(it) },
+            showFlagHapticsSection = true,
             onOpenTutorial = {
                 viewModel.showHapticSettingsDialog(false)
                 showTutorialDialog = true

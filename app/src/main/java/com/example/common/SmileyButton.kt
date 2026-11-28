@@ -1,4 +1,4 @@
-package com.example.minesweeper.ui.components
+package com.example.common
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
@@ -13,7 +13,6 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.minesweeper.model.GameStatus
 
 @Composable
 fun SmileyButton(
